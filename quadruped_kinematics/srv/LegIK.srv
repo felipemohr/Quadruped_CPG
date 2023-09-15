@@ -1,0 +1,17 @@
+uint8 BASE_LINK_AS_REFERENCE=0
+uint8 FOOT_LINK_AS_REFERENCE=1
+uint8 HIP_LINK_AS_REFERENCE=2
+
+uint8 FRONT_RIGHT_LEG=0
+uint8 FRONT_LEFT_LEG=1
+uint8 BACK_LEFT_LEG=2
+uint8 BACK_RIGHT_LEG=3
+
+uint8 reference_link
+geometry_msgs/Vector3 body_translation
+geometry_msgs/Vector3 body_rotation
+
+uint8 leg
+geometry_msgs/Point foot_point
+---
+quadruped_kinematics/LegJoints leg_joints
