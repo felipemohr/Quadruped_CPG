@@ -1,0 +1,25 @@
+ik_server:
+  ros__parameters:
+    body_dimensions:
+      L: 0.376
+      W: 0.094
+      H: 0.300
+    leg_dimensions:
+      L1: 0.080
+      L2: 0.213
+      L3: 0.213
+
+ik_node:
+  ros__parameters:
+    hip_joint:
+      default: 0.0000
+      lower_limit: -1.0472
+      upper_limit: 1.0472
+    thigh_joint:
+      default: 0.7854
+      lower_limit: -0.6632
+      upper_limit: 2.9671
+    calf_joint:
+      default: 1.5708
+      lower_limit: -2.7227
+      upper_limit: -0.8378

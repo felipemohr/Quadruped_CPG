@@ -28,6 +28,11 @@ rosidl_get_typesupport_target(cpp_typesupport_target "${PROJECT_NAME}" "rosidl_t
 target_link_libraries(ik_server "${cpp_typesupport_target}")
 
 install(
+  DIRECTORY config
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(
   TARGETS
     ik_server
   DESTINATION
