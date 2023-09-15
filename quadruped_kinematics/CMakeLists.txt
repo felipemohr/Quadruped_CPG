@@ -20,7 +20,19 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 
 ament_export_dependencies(rosidl_default_runtime)
 
+add_executable(ik_server src/ik_server.cpp)
+ament_target_dependencies(ik_server rclcpp geometry_msgs)
+
 rosidl_get_typesupport_target(cpp_typesupport_target "${PROJECT_NAME}" "rosidl_typesupport_cpp")
+
+target_link_libraries(ik_server "${cpp_typesupport_target}")
+
+install(
+  TARGETS
+    ik_server
+  DESTINATION
+    lib/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
