@@ -15,10 +15,18 @@ class InverseKinematics : public rclcpp::Node
     InverseKinematics();
     ~InverseKinematics();
 
+    struct AllLegJoints;
+
   private:
     void IKCallback(const quadruped_kinematics::msg::QuadrupedIK::SharedPtr msg);
     void legIKCallback(const quadruped_kinematics::msg::LegIK::SharedPtr msg);
     void defaultPoseCallback(const std_msgs::msg::Empty::SharedPtr msg);
+
+    AllLegJoints computeIK(const quadruped_kinematics::msg::QuadrupedIK::SharedPtr msg);
+    quadruped_kinematics::msg::LegJoints computeLegIK(const quadruped_kinematics::msg::LegIK::SharedPtr msg);
+
+    rclcpp::CallbackGroup::SharedPtr _callback_group;
+    rclcpp::SubscriptionOptions _sub_options;
 
     rclcpp::Subscription<quadruped_kinematics::msg::QuadrupedIK>::SharedPtr _cmd_ik_subscriber;
     rclcpp::Subscription<quadruped_kinematics::msg::LegIK>::SharedPtr _cmd_leg_ik_subscriber;
