@@ -71,7 +71,8 @@ void InverseKinematics::IKCallback(const quadruped_kinematics::msg::QuadrupedIK:
 
   quadruped_kinematics::msg::QuadrupedJoints quadruped_joints = this->computeIK(msg);
 
-  // TODO: Include header
+  joint_commands_msg.header.frame_id = "";
+  joint_commands_msg.header.stamp = this->get_clock()->now();
 
   joint_commands_msg.name.resize(12);
   joint_commands_msg.position.resize(12);
@@ -114,8 +115,6 @@ void InverseKinematics::legIKCallback(const quadruped_kinematics::msg::LegIK::Sh
 
   quadruped_kinematics::msg::LegJoints leg_joints = this->computeLegIK(msg);
 
-  // TODO: Include header
-
   std::string leg_prefix;
   switch (msg->leg)
   {
@@ -132,6 +131,9 @@ void InverseKinematics::legIKCallback(const quadruped_kinematics::msg::LegIK::Sh
     leg_prefix = "RR_";
     break;
   }  
+
+  joint_commands_msg.header.frame_id = "";
+  joint_commands_msg.header.stamp = this->get_clock()->now();
 
   joint_commands_msg.name.resize(3);
   joint_commands_msg.position.resize(3);
@@ -152,6 +154,9 @@ void InverseKinematics::defaultPoseCallback(const std_msgs::msg::Empty::SharedPt
   (void) msg;
 
   sensor_msgs::msg::JointState joint_commands_msg;
+
+  joint_commands_msg.header.frame_id = "";
+  joint_commands_msg.header.stamp = this->get_clock()->now();
 
   joint_commands_msg.name.resize(12);
   joint_commands_msg.position.resize(12);
