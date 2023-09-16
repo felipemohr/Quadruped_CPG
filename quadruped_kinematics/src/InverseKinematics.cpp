@@ -66,17 +66,93 @@ InverseKinematics::~InverseKinematics()
 
 void InverseKinematics::IKCallback(const quadruped_kinematics::msg::QuadrupedIK::SharedPtr msg)
 {
+  sensor_msgs::msg::JointState::SharedPtr joint_commands_msg;
+
+  AllLegJoints all_leg_joints = this->computeIK(msg);
+
+  // TODO: Include header
+
+  joint_commands_msg->name.resize(12);
+  joint_commands_msg->position.resize(12);
+
+  joint_commands_msg->name.at(0) = "FR_hip_joint";
+  joint_commands_msg->name.at(1) = "FR_thigh_joint";
+  joint_commands_msg->name.at(2) = "FR_calf_joint";
+  joint_commands_msg->position.at(0) = all_leg_joints.front_right.hip_joint;
+  joint_commands_msg->position.at(1) = all_leg_joints.front_right.thigh_joint;
+  joint_commands_msg->position.at(2) = all_leg_joints.front_right.calf_joint;
+
+  joint_commands_msg->name.at(3) = "FL_hip_joint";
+  joint_commands_msg->name.at(4) = "FL_thigh_joint";
+  joint_commands_msg->name.at(5) = "FL_calf_joint";
+  joint_commands_msg->position.at(3) = all_leg_joints.front_left.hip_joint;
+  joint_commands_msg->position.at(4) = all_leg_joints.front_left.thigh_joint;
+  joint_commands_msg->position.at(5) = all_leg_joints.front_left.calf_joint;
+
+  joint_commands_msg->name.at(6) = "BL_hip_joint";
+  joint_commands_msg->name.at(7) = "BL_thigh_joint";
+  joint_commands_msg->name.at(8) = "BL_calf_joint";
+  joint_commands_msg->position.at(6) = all_leg_joints.back_left.hip_joint;
+  joint_commands_msg->position.at(7) = all_leg_joints.back_left.thigh_joint;
+  joint_commands_msg->position.at(8) = all_leg_joints.back_left.calf_joint;
+
+  joint_commands_msg->name.at(9)  = "BR_hip_joint";
+  joint_commands_msg->name.at(10) = "BR_thigh_joint";
+  joint_commands_msg->name.at(11) = "BR_calf_joint";
+  joint_commands_msg->position.at(9)  = all_leg_joints.back_right.hip_joint;
+  joint_commands_msg->position.at(10) = all_leg_joints.back_right.thigh_joint;
+  joint_commands_msg->position.at(11) = all_leg_joints.back_right.calf_joint;
+
+  _joint_commands_publisher->publish(*joint_commands_msg);
 
 }
 
 void InverseKinematics::legIKCallback(const quadruped_kinematics::msg::LegIK::SharedPtr msg)
 {
+  sensor_msgs::msg::JointState::SharedPtr joint_commands_msg;
+
+  quadruped_kinematics::msg::LegJoints leg_joints = this->computeLegIK(msg);
+
+  // TODO: Include header
+
+  std::string leg_prefix;
+  switch (msg->leg)
+  {
+  case quadruped_kinematics::msg::LegIK::FRONT_RIGHT_LEG:
+    leg_prefix = "FR_";
+    break;
+  case quadruped_kinematics::msg::LegIK::FRONT_LEFT_LEG:
+    leg_prefix = "FL_";
+    break;
+  case quadruped_kinematics::msg::LegIK::BACK_LEFT_LEG:
+    leg_prefix = "BL_";
+    break;
+  case quadruped_kinematics::msg::LegIK::BACK_RIGHT_LEG:
+    leg_prefix = "BR_";
+    break;
+  }  
+
+  joint_commands_msg->name.resize(3);
+  joint_commands_msg->position.resize(3);
+
+  joint_commands_msg->name.at(0) = leg_prefix + "hip_joint";
+  joint_commands_msg->name.at(1) = leg_prefix + "thigh_joint";
+  joint_commands_msg->name.at(2) = leg_prefix + "calf_joint";
+  joint_commands_msg->position.at(0) = leg_joints.hip_joint;
+  joint_commands_msg->position.at(1) = leg_joints.thigh_joint;
+  joint_commands_msg->position.at(2) = leg_joints.calf_joint;
+
+  _joint_commands_publisher->publish(*joint_commands_msg);
 
 }
 
 void InverseKinematics::defaultPoseCallback(const std_msgs::msg::Empty::SharedPtr msg)
 {
+  (void) msg;
 
+  quadruped_kinematics::msg::QuadrupedIK::SharedPtr ik_msg;
+  ik_msg->use_feet_transforms = true;
+  this->IKCallback(ik_msg);
 }
 
 InverseKinematics::AllLegJoints InverseKinematics::computeIK(const quadruped_kinematics::msg::QuadrupedIK::SharedPtr msg)
@@ -141,8 +217,6 @@ quadruped_kinematics::msg::LegJoints InverseKinematics::computeLegIK(const quadr
 
   return leg_joints;
 }
-
-
 
 
 int main(int argc, char **argv)

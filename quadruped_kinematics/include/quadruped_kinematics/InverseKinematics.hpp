@@ -37,6 +37,4 @@ class InverseKinematics : public rclcpp::Node
     rclcpp::Client<quadruped_kinematics::srv::QuadrupedIK>::SharedPtr _ik_client;
     rclcpp::Client<quadruped_kinematics::srv::LegIK>::SharedPtr _leg_ik_client;
 
-    sensor_msgs::msg::JointState _joint_commands_msg;
-
 };
