@@ -94,9 +94,9 @@ quadruped_kinematics::msg::LegJoints getLegJoints(const geometry_msgs::msg::Poin
   float theta3 = atan2(sqrt(1 - pow(B, 2)), B);
 
   quadruped_kinematics::msg::LegJoints leg_joints;
-  leg_joints.hip_joint   = theta1;
-  leg_joints.thigh_joint = -(theta2 + M_PI_4);
-  leg_joints.calf_joint  = -(theta3 - M_PI_2);
+  leg_joints.hip_joint   =  theta1;
+  leg_joints.thigh_joint = -theta2;
+  leg_joints.calf_joint  = -theta3;
 
   return leg_joints;
 }
@@ -151,8 +151,6 @@ void computeLegIKCallback(const std::shared_ptr<quadruped_kinematics::srv::LegIK
 void computeQuadrupedIKCallback(const std::shared_ptr<quadruped_kinematics::srv::QuadrupedIK::Request> request,
                                       std::shared_ptr<quadruped_kinematics::srv::QuadrupedIK::Response> response)
 {
-  RCLCPP_INFO(rclcpp::get_logger("ik_server"), "computeQuadrupedIKCallback.");
-
   quadruped_kinematics::srv::LegIK::Request fr_request;
   fr_request.use_foot_transform = request->use_feet_transforms;
   fr_request.body_translation = request->body_translation;

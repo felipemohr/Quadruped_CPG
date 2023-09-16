@@ -19,6 +19,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/LegJoints.msg"
   "msg/LegIK.msg"
   "srv/LegIK.srv"
+  "msg/QuadrupedJoints.msg"
   "msg/QuadrupedIK.msg"
   "srv/QuadrupedIK.srv"
   DEPENDENCIES geometry_msgs

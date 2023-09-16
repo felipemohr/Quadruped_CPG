@@ -9,14 +9,6 @@
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
-struct InverseKinematics::AllLegJoints
-{
-  quadruped_kinematics::msg::LegJoints front_right;
-  quadruped_kinematics::msg::LegJoints front_left;
-  quadruped_kinematics::msg::LegJoints back_left;
-  quadruped_kinematics::msg::LegJoints back_right;
-};
-
 InverseKinematics::InverseKinematics() : Node("ik_node")
 {
   RCLCPP_INFO(this->get_logger(), "Inverse Kinematics Node initialized");
@@ -39,6 +31,15 @@ InverseKinematics::InverseKinematics() : Node("ik_node")
   _leg_ik_client = this->create_client<quadruped_kinematics::srv::LegIK>("compute_leg_ik",
                                                                          rmw_qos_profile_services_default,
                                                                          _callback_group);
+
+  _last_leg_joints.hip_joint   = 0.0;
+  _last_leg_joints.thigh_joint = 0.7854;
+  _last_leg_joints.calf_joint  = -1.5708;
+
+  _last_quadruped_joints.front_right_joints = _last_leg_joints;
+  _last_quadruped_joints.front_left_joints  = _last_leg_joints;
+  _last_quadruped_joints.back_left_joints   = _last_leg_joints;
+  _last_quadruped_joints.back_right_joints  = _last_leg_joints;
 
   while (!_ik_client->wait_for_service(1s))
   {
@@ -68,7 +69,7 @@ void InverseKinematics::IKCallback(const quadruped_kinematics::msg::QuadrupedIK:
 {
   sensor_msgs::msg::JointState joint_commands_msg;
 
-  AllLegJoints all_leg_joints = this->computeIK(msg);
+  quadruped_kinematics::msg::QuadrupedJoints quadruped_joints = this->computeIK(msg);
 
   // TODO: Include header
 
@@ -78,30 +79,30 @@ void InverseKinematics::IKCallback(const quadruped_kinematics::msg::QuadrupedIK:
   joint_commands_msg.name.at(0) = "FR_hip_joint";
   joint_commands_msg.name.at(1) = "FR_thigh_joint";
   joint_commands_msg.name.at(2) = "FR_calf_joint";
-  joint_commands_msg.position.at(0) = all_leg_joints.front_right.hip_joint;
-  joint_commands_msg.position.at(1) = all_leg_joints.front_right.thigh_joint;
-  joint_commands_msg.position.at(2) = all_leg_joints.front_right.calf_joint;
+  joint_commands_msg.position.at(0) = quadruped_joints.front_right_joints.hip_joint;
+  joint_commands_msg.position.at(1) = quadruped_joints.front_right_joints.thigh_joint;
+  joint_commands_msg.position.at(2) = quadruped_joints.front_right_joints.calf_joint;
 
   joint_commands_msg.name.at(3) = "FL_hip_joint";
   joint_commands_msg.name.at(4) = "FL_thigh_joint";
   joint_commands_msg.name.at(5) = "FL_calf_joint";
-  joint_commands_msg.position.at(3) = all_leg_joints.front_left.hip_joint;
-  joint_commands_msg.position.at(4) = all_leg_joints.front_left.thigh_joint;
-  joint_commands_msg.position.at(5) = all_leg_joints.front_left.calf_joint;
+  joint_commands_msg.position.at(3) = quadruped_joints.front_left_joints.hip_joint;
+  joint_commands_msg.position.at(4) = quadruped_joints.front_left_joints.thigh_joint;
+  joint_commands_msg.position.at(5) = quadruped_joints.front_left_joints.calf_joint;
 
   joint_commands_msg.name.at(6) = "RL_hip_joint";
   joint_commands_msg.name.at(7) = "RL_thigh_joint";
   joint_commands_msg.name.at(8) = "RL_calf_joint";
-  joint_commands_msg.position.at(6) = all_leg_joints.back_left.hip_joint;
-  joint_commands_msg.position.at(7) = all_leg_joints.back_left.thigh_joint;
-  joint_commands_msg.position.at(8) = all_leg_joints.back_left.calf_joint;
+  joint_commands_msg.position.at(6) = quadruped_joints.back_left_joints.hip_joint;
+  joint_commands_msg.position.at(7) = quadruped_joints.back_left_joints.thigh_joint;
+  joint_commands_msg.position.at(8) = quadruped_joints.back_left_joints.calf_joint;
 
   joint_commands_msg.name.at(9)  = "RR_hip_joint";
   joint_commands_msg.name.at(10) = "RR_thigh_joint";
   joint_commands_msg.name.at(11) = "RR_calf_joint";
-  joint_commands_msg.position.at(9)  = all_leg_joints.back_right.hip_joint;
-  joint_commands_msg.position.at(10) = all_leg_joints.back_right.thigh_joint;
-  joint_commands_msg.position.at(11) = all_leg_joints.back_right.calf_joint;
+  joint_commands_msg.position.at(9)  = quadruped_joints.back_right_joints.hip_joint;
+  joint_commands_msg.position.at(10) = quadruped_joints.back_right_joints.thigh_joint;
+  joint_commands_msg.position.at(11) = quadruped_joints.back_right_joints.calf_joint;
 
   _joint_commands_publisher->publish(joint_commands_msg);
 
@@ -158,26 +159,36 @@ void InverseKinematics::defaultPoseCallback(const std_msgs::msg::Empty::SharedPt
   joint_commands_msg.name.at(0) = "FR_hip_joint";
   joint_commands_msg.name.at(1) = "FR_thigh_joint";
   joint_commands_msg.name.at(2) = "FR_calf_joint";
+  joint_commands_msg.position.at(0) = 0.0;
+  joint_commands_msg.position.at(1) = 0.7854;
+  joint_commands_msg.position.at(2) = -1.5708;
+
   joint_commands_msg.name.at(3) = "FL_hip_joint";
   joint_commands_msg.name.at(4) = "FL_thigh_joint";
   joint_commands_msg.name.at(5) = "FL_calf_joint";
+  joint_commands_msg.position.at(3) = 0.0;
+  joint_commands_msg.position.at(4) = 0.7854;
+  joint_commands_msg.position.at(5) = -1.5708;
+
   joint_commands_msg.name.at(6) = "RL_hip_joint";
   joint_commands_msg.name.at(7) = "RL_thigh_joint";
   joint_commands_msg.name.at(8) = "RL_calf_joint";
+  joint_commands_msg.position.at(6) = 0.0;
+  joint_commands_msg.position.at(7) = 0.7854;
+  joint_commands_msg.position.at(8) = -1.5708;
+
   joint_commands_msg.name.at(9)  = "RR_hip_joint";
   joint_commands_msg.name.at(10) = "RR_thigh_joint";
   joint_commands_msg.name.at(11) = "RR_calf_joint";
-
-  for (int i=0; i<(int)joint_commands_msg.position.size(); i++)
-  {
-    joint_commands_msg.position.at(i) = 0.0;
-  }
+  joint_commands_msg.position.at(9) = 0.0;
+  joint_commands_msg.position.at(10) = 0.7854;
+  joint_commands_msg.position.at(11) = -1.5708;
 
   _joint_commands_publisher->publish(joint_commands_msg);
 
 }
 
-InverseKinematics::AllLegJoints InverseKinematics::computeIK(const quadruped_kinematics::msg::QuadrupedIK::SharedPtr msg)
+quadruped_kinematics::msg::QuadrupedJoints InverseKinematics::computeIK(const quadruped_kinematics::msg::QuadrupedIK::SharedPtr msg)
 {
   auto request = std::make_shared<quadruped_kinematics::srv::QuadrupedIK::Request>();
   
@@ -190,26 +201,35 @@ InverseKinematics::AllLegJoints InverseKinematics::computeIK(const quadruped_kin
   request->back_left_foot   = msg->back_left_foot;
   request->back_right_foot  = msg->back_right_foot;
 
-  auto response = this->_ik_client->async_send_request(request);
-  std::future_status status = response.wait_for(10ms);
+  // auto start = std::chrono::steady_clock::now();
 
-  AllLegJoints all_leg_joints;
+  auto result = this->_ik_client->async_send_request(request);
+  std::future_status status = result.wait_for(5ms);
+
+  quadruped_kinematics::msg::QuadrupedJoints quadruped_joints;
 
   if (status == std::future_status::ready)
   {
-    auto leg_joints = response.get();
-    all_leg_joints.front_right = leg_joints->front_right_joints;
-    all_leg_joints.front_left  = leg_joints->front_left_joints;
-    all_leg_joints.back_left   = leg_joints->back_left_joints;
-    all_leg_joints.back_right  = leg_joints->back_right_joints;
+    auto leg_joints = result.get();
+    quadruped_joints.front_right_joints = leg_joints->front_right_joints;
+    quadruped_joints.front_left_joints  = leg_joints->front_left_joints;
+    quadruped_joints.back_left_joints   = leg_joints->back_left_joints;
+    quadruped_joints.back_right_joints  = leg_joints->back_right_joints;
   }
   else
   {
-    // TODO: Fix return and change warn to throttled
-    RCLCPP_WARN(this->get_logger(), "Failed to compute leg joints, timeout");
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 3000, "Failed to compute quadruped joints, timeout");
+    return _last_quadruped_joints;
   }
 
-  return all_leg_joints;
+  // auto end = std::chrono::steady_clock::now();
+  // std::cout << "Elapsed time in microseconds: "
+  //           << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+  //           << " µs" << std::endl;
+
+  _last_quadruped_joints = quadruped_joints;
+
+  return quadruped_joints;
 }
 
 quadruped_kinematics::msg::LegJoints InverseKinematics::computeLegIK(const quadruped_kinematics::msg::LegIK::SharedPtr msg)
@@ -223,20 +243,29 @@ quadruped_kinematics::msg::LegJoints InverseKinematics::computeLegIK(const quadr
   request->leg = msg->leg;
   request->foot_point = msg->foot_point;
 
-  auto response = this->_leg_ik_client->async_send_request(request);
-  std::future_status status = response.wait_for(10ms);
+  // auto start = std::chrono::steady_clock::now();
+
+  auto result = this->_leg_ik_client->async_send_request(request);
+  std::future_status status = result.wait_for(5ms);
 
   quadruped_kinematics::msg::LegJoints leg_joints;
 
   if (status == std::future_status::ready)
   {
-    leg_joints = response.get()->leg_joints;
+    leg_joints = result.get()->leg_joints;
   }
   else
   {
-    // TODO: Fix return and change warn to throttled
-    RCLCPP_WARN(this->get_logger(), "Failed to compute leg joints, timeout");
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 3000, "Failed to compute leg joints, timeout");
+    return _last_leg_joints;
   }
+
+  // auto end = std::chrono::steady_clock::now();
+  // std::cout << "Elapsed time in microseconds: "
+  //           << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+  //           << " µs" << std::endl;
+
+  _last_leg_joints = leg_joints;
 
   return leg_joints;
 }
