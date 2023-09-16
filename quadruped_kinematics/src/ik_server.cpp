@@ -186,9 +186,9 @@ int main(int argc, char **argv)
   getQuadrupedParameters(node);
 
   rclcpp::Service<quadruped_kinematics::srv::LegIK>::SharedPtr leg_ik_service =
-    node->create_service<quadruped_kinematics::srv::LegIK>("leg_ik", &computeLegIK);
+    node->create_service<quadruped_kinematics::srv::LegIK>("compute_leg_ik", &computeLegIK);
   rclcpp::Service<quadruped_kinematics::srv::QuadrupedIK>::SharedPtr quadruped_ik_service =
-    node->create_service<quadruped_kinematics::srv::QuadrupedIK>("quadruped_ik", &computeQuadrupedIK);
+    node->create_service<quadruped_kinematics::srv::QuadrupedIK>("compute_quadruped_ik", &computeQuadrupedIK);
   
   RCLCPP_INFO(rclcpp::get_logger("ik_server"), "IK Server started.");
 

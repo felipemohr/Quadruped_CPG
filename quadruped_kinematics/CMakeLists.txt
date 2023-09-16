@@ -32,7 +32,7 @@ target_link_libraries(ik_server "${cpp_typesupport_target}")
 include_directories(${EIGEN3_INCLUDE_DIR})
 
 install(
-  DIRECTORY config
+  DIRECTORY launch config
   DESTINATION share/${PROJECT_NAME}
 )
 
