@@ -20,8 +20,17 @@ def generate_launch_description():
         parameters=[quadruped_config]
     )
 
+    ik_node = Node(
+        package='quadruped_kinematics',
+        executable='ik_node',
+        name='ik_node',
+        output='both',
+        parameters=[quadruped_config]
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument(name='quadruped_config', default_value=default_quadruped_config,
                               description='Absolute path to quadruped config file'),
-        ik_server        
+        ik_server,
+        ik_node 
     ])
