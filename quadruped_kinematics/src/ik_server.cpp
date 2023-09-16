@@ -1,14 +1,73 @@
 #include "rclcpp/rclcpp.hpp"
+#include "tf2_eigen/tf2_eigen.hpp"
 #include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/vector3.hpp"
 #include "quadruped_kinematics/msg/leg_joints.hpp"
 #include "quadruped_kinematics/srv/leg_ik.hpp"
 #include "quadruped_kinematics/srv/quadruped_ik.hpp"
 
+#include <Eigen/Geometry>
 #include <memory>
 #include <cmath>
 
 std::map<std::string, double> body_dimensions;
 std::map<std::string, double> leg_dimensions;
+
+Eigen::Matrix4d getTranslationMatrix(const float x, const float y, const float z)
+{
+  Eigen::Matrix4d translation_matrix;
+  translation_matrix << 1.0, 0.0, 0.0, x,
+                        0.0, 1.0, 0.0, y,
+                        0.0, 0.0, 1.0, z,
+                        0.0, 0.0, 0.0, 1.0;
+  return translation_matrix;
+}
+
+Eigen::Matrix4d getTransformationMatrix(const geometry_msgs::msg::Vector3 translation,
+                                        const geometry_msgs::msg::Vector3 rotation)
+{
+  Eigen::Vector3d translation_eigen;
+  tf2:: fromMsg(translation, translation_eigen);
+
+  Eigen::AngleAxisd rollRotation(rotation.x, Eigen::Vector3d::UnitX());
+  Eigen::AngleAxisd pitchRotation(rotation.y, Eigen::Vector3d::UnitY());
+  Eigen::AngleAxisd yawRotation(rotation.z, Eigen::Vector3d::UnitZ());
+
+  Eigen::Quaternion q = rollRotation * pitchRotation * yawRotation;
+  Eigen::Matrix3d rotation_eigen = q.toRotationMatrix();
+
+  Eigen::Matrix4d Tm = Eigen::MatrixXd::Identity(4, 4);
+  Tm.block<3, 3>(0, 0) = rotation_eigen;
+  Tm.block<3, 1>(0, 3) = translation_eigen;
+
+  return Tm;
+}
+
+Eigen::Matrix4d getBodyLegIK(const uint8_t leg,
+                             const geometry_msgs::msg::Vector3 body_position,
+                             const geometry_msgs::msg::Vector3 body_rotation)
+{
+  Eigen::Matrix4d Tm = getTransformationMatrix(body_position, body_rotation);
+
+  Eigen::Matrix4d BodyLegMatrix;
+  switch (leg)
+  {
+    case quadruped_kinematics::srv::LegIK_Request::FRONT_RIGHT_LEG:
+      BodyLegMatrix = Tm * getTranslationMatrix( body_dimensions["L"]/2, -body_dimensions["W"]/2, 0.0);
+      break;
+    case quadruped_kinematics::srv::LegIK_Request::FRONT_LEFT_LEG:
+      BodyLegMatrix = Tm * getTranslationMatrix( body_dimensions["L"]/2,  body_dimensions["W"]/2, 0.0);
+      break;
+    case quadruped_kinematics::srv::LegIK_Request::BACK_LEFT_LEG:
+      BodyLegMatrix = Tm * getTranslationMatrix(-body_dimensions["L"]/2,  body_dimensions["W"]/2, 0.0);
+      break;
+    case quadruped_kinematics::srv::LegIK_Request::BACK_RIGHT_LEG:
+      BodyLegMatrix = Tm * getTranslationMatrix(-body_dimensions["L"]/2, -body_dimensions["W"]/2, 0.0);
+      break;
+  }
+
+  return BodyLegMatrix;
+}
 
 void getQuadrupedParameters(rclcpp::Node::SharedPtr node)
 {
@@ -43,16 +102,50 @@ quadruped_kinematics::msg::LegJoints getLegJoints(const geometry_msgs::msg::Poin
 }
 
 void computeLegIK(const std::shared_ptr<quadruped_kinematics::srv::LegIK_Request> request,
-                  std::shared_ptr<quadruped_kinematics::srv::LegIK_Response> responde)
+                  std::shared_ptr<quadruped_kinematics::srv::LegIK_Response> response)
 {
+  Eigen::Vector3d foot_point;
+  tf2::fromMsg(request->foot_point, foot_point);
 
+  bool left;
+
+  if (request->use_foot_transform)
+  {
+    switch (request->leg)
+    {
+      case quadruped_kinematics::srv::LegIK_Request::FRONT_RIGHT_LEG:
+        foot_point = (getTranslationMatrix( body_dimensions["L"]/2, -(body_dimensions["W"]/2+leg_dimensions["L1"]), -body_dimensions["H"])*foot_point.homogeneous()).head<3>();
+        left = false;
+        break;
+      case quadruped_kinematics::srv::LegIK_Request::FRONT_LEFT_LEG:
+        foot_point  = (getTranslationMatrix( body_dimensions["L"]/2,  (body_dimensions["W"]/2+leg_dimensions["L1"]), -body_dimensions["H"])*foot_point.homogeneous()).head<3>();
+        left = true;
+        break;
+      case quadruped_kinematics::srv::LegIK_Request::BACK_LEFT_LEG:
+        foot_point   = (getTranslationMatrix(-body_dimensions["L"]/2,  (body_dimensions["W"]/2+leg_dimensions["L1"]), -body_dimensions["H"])*foot_point.homogeneous()).head<3>();
+        left = true;
+        break;
+      case quadruped_kinematics::srv::LegIK_Request::BACK_RIGHT_LEG:
+        foot_point  = (getTranslationMatrix(-body_dimensions["L"]/2, -(body_dimensions["W"]/2+leg_dimensions["L1"]), -body_dimensions["H"])*foot_point.homogeneous()).head<3>();
+        left = false;
+        break;
+    }
+  }
+
+  Eigen::Matrix4d foot_body_ik = getBodyLegIK(request->leg, request->body_translation, request->body_rotation);
+
+  Eigen::Vector4d foot_point_ik = (foot_body_ik.inverse() * foot_point.homogeneous());
+
+  geometry_msgs::msg::Point foot_point_msg = tf2::toMsg(Eigen::Vector3d(foot_point_ik.head(3)));
+
+  response->leg_joints = getLegJoints(foot_point_msg, left);
 }
 
 void computeQuadrupedIK(const std::shared_ptr<quadruped_kinematics::srv::QuadrupedIK_Request> request,
                         std::shared_ptr<quadruped_kinematics::srv::QuadrupedIK_Response> response)
 {
   std::shared_ptr<quadruped_kinematics::srv::LegIK_Request> fr_request;
-  fr_request->reference_link = request->reference_link;
+  fr_request->use_foot_transform = request->use_feet_transforms;
   fr_request->body_translation = request->body_translation;
   fr_request->body_rotation = request->body_rotation;
   std::shared_ptr<quadruped_kinematics::srv::LegIK_Request> fl_request = fr_request;

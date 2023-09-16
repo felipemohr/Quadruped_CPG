@@ -7,7 +7,9 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(Eigen3 REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(tf2_eigen REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
@@ -21,11 +23,13 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 ament_export_dependencies(rosidl_default_runtime)
 
 add_executable(ik_server src/ik_server.cpp)
-ament_target_dependencies(ik_server rclcpp geometry_msgs)
+ament_target_dependencies(ik_server rclcpp geometry_msgs tf2_eigen Eigen3)
 
 rosidl_get_typesupport_target(cpp_typesupport_target "${PROJECT_NAME}" "rosidl_typesupport_cpp")
 
 target_link_libraries(ik_server "${cpp_typesupport_target}")
+
+include_directories(${EIGEN3_INCLUDE_DIR})
 
 install(
   DIRECTORY config
