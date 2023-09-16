@@ -35,9 +35,9 @@ quadruped_kinematics::msg::LegJoints getLegJoints(const geometry_msgs::msg::Poin
   float theta3 = atan2(sqrt(1 - pow(B, 2)), B);
 
   quadruped_kinematics::msg::LegJoints leg_joints;
-  leg_joints.hip_roll_joint  = theta1;
-  leg_joints.hip_pitch_joint = -(theta2 + M_PI_4);
-  leg_joints.elbow_joint     = -(theta3 - M_PI_2);
+  leg_joints.hip_joint   = theta1;
+  leg_joints.thigh_joint = -(theta2 + M_PI_4);
+  leg_joints.calf_joint  = -(theta3 - M_PI_2);
 
   return leg_joints;
 }
