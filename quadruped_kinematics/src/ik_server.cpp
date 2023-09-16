@@ -101,17 +101,16 @@ quadruped_kinematics::msg::LegJoints getLegJoints(const geometry_msgs::msg::Poin
   return leg_joints;
 }
 
-void computeLegIK(const std::shared_ptr<quadruped_kinematics::srv::LegIK_Request> request,
-                  std::shared_ptr<quadruped_kinematics::srv::LegIK_Response> response)
+quadruped_kinematics::msg::LegJoints computeLegIK(quadruped_kinematics::srv::LegIK::Request request)
 {
   Eigen::Vector3d foot_point;
-  tf2::fromMsg(request->foot_point, foot_point);
+  tf2::fromMsg(request.foot_point, foot_point);
 
   bool left;
 
-  if (request->use_foot_transform)
+  if (request.use_foot_transform)
   {
-    switch (request->leg)
+    switch (request.leg)
     {
       case quadruped_kinematics::srv::LegIK_Request::FRONT_RIGHT_LEG:
         foot_point = (getTranslationMatrix( body_dimensions["L"]/2, -(body_dimensions["W"]/2+leg_dimensions["L1"]), -body_dimensions["H"])*foot_point.homogeneous()).head<3>();
@@ -132,49 +131,50 @@ void computeLegIK(const std::shared_ptr<quadruped_kinematics::srv::LegIK_Request
     }
   }
 
-  Eigen::Matrix4d foot_body_ik = getBodyLegIK(request->leg, request->body_translation, request->body_rotation);
+  Eigen::Matrix4d foot_body_ik = getBodyLegIK(request.leg, request.body_translation, request.body_rotation);
 
   Eigen::Vector4d foot_point_ik = (foot_body_ik.inverse() * foot_point.homogeneous());
 
   geometry_msgs::msg::Point foot_point_msg = tf2::toMsg(Eigen::Vector3d(foot_point_ik.head(3)));
 
-  response->leg_joints = getLegJoints(foot_point_msg, left);
+  quadruped_kinematics::msg::LegJoints leg_joints = getLegJoints(foot_point_msg, left);
+
+  return leg_joints;
 }
 
-void computeQuadrupedIK(const std::shared_ptr<quadruped_kinematics::srv::QuadrupedIK_Request> request,
-                        std::shared_ptr<quadruped_kinematics::srv::QuadrupedIK_Response> response)
+void computeLegIKCallback(const std::shared_ptr<quadruped_kinematics::srv::LegIK::Request> request,
+                                std::shared_ptr<quadruped_kinematics::srv::LegIK::Response> response)
 {
-  std::shared_ptr<quadruped_kinematics::srv::LegIK_Request> fr_request;
-  fr_request->use_foot_transform = request->use_feet_transforms;
-  fr_request->body_translation = request->body_translation;
-  fr_request->body_rotation = request->body_rotation;
-  std::shared_ptr<quadruped_kinematics::srv::LegIK_Request> fl_request = fr_request;
-  std::shared_ptr<quadruped_kinematics::srv::LegIK_Request> bl_request = fr_request;
-  std::shared_ptr<quadruped_kinematics::srv::LegIK_Request> br_request = fr_request;
+  response->leg_joints = computeLegIK(*request);
+}
 
-  fr_request->leg = quadruped_kinematics::srv::LegIK_Request::FRONT_RIGHT_LEG;
-  fr_request->foot_point = request->front_right_foot;
-  fl_request->leg = quadruped_kinematics::srv::LegIK_Request::FRONT_LEFT_LEG;
-  fl_request->foot_point = request->front_left_foot;
-  bl_request->leg = quadruped_kinematics::srv::LegIK_Request::BACK_LEFT_LEG;
-  bl_request->foot_point = request->back_left_foot;
-  br_request->leg = quadruped_kinematics::srv::LegIK_Request::BACK_RIGHT_LEG;
-  br_request->foot_point = request->back_right_foot;
+void computeQuadrupedIKCallback(const std::shared_ptr<quadruped_kinematics::srv::QuadrupedIK::Request> request,
+                                      std::shared_ptr<quadruped_kinematics::srv::QuadrupedIK::Response> response)
+{
+  RCLCPP_INFO(rclcpp::get_logger("ik_server"), "computeQuadrupedIKCallback.");
 
-  std::shared_ptr<quadruped_kinematics::srv::LegIK_Response> fr_response;
-  std::shared_ptr<quadruped_kinematics::srv::LegIK_Response> fl_response;
-  std::shared_ptr<quadruped_kinematics::srv::LegIK_Response> bl_response;
-  std::shared_ptr<quadruped_kinematics::srv::LegIK_Response> br_response;
+  quadruped_kinematics::srv::LegIK::Request fr_request;
+  fr_request.use_foot_transform = request->use_feet_transforms;
+  fr_request.body_translation = request->body_translation;
+  fr_request.body_rotation = request->body_rotation;
+  quadruped_kinematics::srv::LegIK::Request fl_request = fr_request;
+  quadruped_kinematics::srv::LegIK::Request bl_request = fr_request;
+  quadruped_kinematics::srv::LegIK::Request br_request = fr_request;
 
-  computeLegIK(fr_request, fr_response);
-  computeLegIK(fl_request, fl_response);
-  computeLegIK(bl_request, bl_response);
-  computeLegIK(br_request, br_response);
+  fr_request.leg = quadruped_kinematics::srv::LegIK::Request::FRONT_RIGHT_LEG;
+  fr_request.foot_point = request->front_right_foot;
+  fl_request.leg = quadruped_kinematics::srv::LegIK::Request::FRONT_LEFT_LEG;
+  fl_request.foot_point = request->front_left_foot;
+  bl_request.leg = quadruped_kinematics::srv::LegIK::Request::BACK_LEFT_LEG;
+  bl_request.foot_point = request->back_left_foot;
+  br_request.leg = quadruped_kinematics::srv::LegIK::Request::BACK_RIGHT_LEG;
+  br_request.foot_point = request->back_right_foot;
 
-  response->front_right_joints = fr_response->leg_joints;
-  response->front_left_joints  = fl_response->leg_joints;
-  response->back_left_joints   = bl_response->leg_joints;
-  response->back_right_joints  = br_response->leg_joints;
+  response->front_right_joints = computeLegIK(fr_request);
+  response->front_left_joints  = computeLegIK(fl_request);
+  response->back_left_joints   = computeLegIK(bl_request);
+  response->back_right_joints  = computeLegIK(br_request);
+
 }
 
 int main(int argc, char **argv)
@@ -186,9 +186,9 @@ int main(int argc, char **argv)
   getQuadrupedParameters(node);
 
   rclcpp::Service<quadruped_kinematics::srv::LegIK>::SharedPtr leg_ik_service =
-    node->create_service<quadruped_kinematics::srv::LegIK>("compute_leg_ik", &computeLegIK);
+    node->create_service<quadruped_kinematics::srv::LegIK>("compute_leg_ik", &computeLegIKCallback);
   rclcpp::Service<quadruped_kinematics::srv::QuadrupedIK>::SharedPtr quadruped_ik_service =
-    node->create_service<quadruped_kinematics::srv::QuadrupedIK>("compute_quadruped_ik", &computeQuadrupedIK);
+    node->create_service<quadruped_kinematics::srv::QuadrupedIK>("compute_quadruped_ik", &computeQuadrupedIKCallback);
   
   RCLCPP_INFO(rclcpp::get_logger("ik_server"), "IK Server started.");
 
