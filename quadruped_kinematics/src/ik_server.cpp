@@ -58,10 +58,10 @@ Eigen::Matrix4d getBodyLegIK(const uint8_t leg,
     case quadruped_kinematics::srv::LegIK_Request::FRONT_LEFT_LEG:
       BodyLegMatrix = Tm * getTranslationMatrix( body_dimensions["L"]/2,  body_dimensions["W"]/2, 0.0);
       break;
-    case quadruped_kinematics::srv::LegIK_Request::BACK_LEFT_LEG:
+    case quadruped_kinematics::srv::LegIK_Request::REAR_LEFT_LEG:
       BodyLegMatrix = Tm * getTranslationMatrix(-body_dimensions["L"]/2,  body_dimensions["W"]/2, 0.0);
       break;
-    case quadruped_kinematics::srv::LegIK_Request::BACK_RIGHT_LEG:
+    case quadruped_kinematics::srv::LegIK_Request::REAR_RIGHT_LEG:
       BodyLegMatrix = Tm * getTranslationMatrix(-body_dimensions["L"]/2, -body_dimensions["W"]/2, 0.0);
       break;
   }
@@ -120,11 +120,11 @@ quadruped_kinematics::msg::LegJoints computeLegIK(quadruped_kinematics::srv::Leg
         foot_point  = (getTranslationMatrix( body_dimensions["L"]/2,  (body_dimensions["W"]/2+leg_dimensions["L1"]), -body_dimensions["H"])*foot_point.homogeneous()).head<3>();
         left = true;
         break;
-      case quadruped_kinematics::srv::LegIK_Request::BACK_LEFT_LEG:
+      case quadruped_kinematics::srv::LegIK_Request::REAR_LEFT_LEG:
         foot_point   = (getTranslationMatrix(-body_dimensions["L"]/2,  (body_dimensions["W"]/2+leg_dimensions["L1"]), -body_dimensions["H"])*foot_point.homogeneous()).head<3>();
         left = true;
         break;
-      case quadruped_kinematics::srv::LegIK_Request::BACK_RIGHT_LEG:
+      case quadruped_kinematics::srv::LegIK_Request::REAR_RIGHT_LEG:
         foot_point  = (getTranslationMatrix(-body_dimensions["L"]/2, -(body_dimensions["W"]/2+leg_dimensions["L1"]), -body_dimensions["H"])*foot_point.homogeneous()).head<3>();
         left = false;
         break;
@@ -156,22 +156,22 @@ void computeQuadrupedIKCallback(const std::shared_ptr<quadruped_kinematics::srv:
   fr_request.body_translation = request->body_translation;
   fr_request.body_rotation = request->body_rotation;
   quadruped_kinematics::srv::LegIK::Request fl_request = fr_request;
-  quadruped_kinematics::srv::LegIK::Request bl_request = fr_request;
-  quadruped_kinematics::srv::LegIK::Request br_request = fr_request;
+  quadruped_kinematics::srv::LegIK::Request rl_request = fr_request;
+  quadruped_kinematics::srv::LegIK::Request rr_request = fr_request;
 
   fr_request.leg = quadruped_kinematics::srv::LegIK::Request::FRONT_RIGHT_LEG;
   fr_request.foot_point = request->front_right_foot;
   fl_request.leg = quadruped_kinematics::srv::LegIK::Request::FRONT_LEFT_LEG;
   fl_request.foot_point = request->front_left_foot;
-  bl_request.leg = quadruped_kinematics::srv::LegIK::Request::BACK_LEFT_LEG;
-  bl_request.foot_point = request->back_left_foot;
-  br_request.leg = quadruped_kinematics::srv::LegIK::Request::BACK_RIGHT_LEG;
-  br_request.foot_point = request->back_right_foot;
+  rl_request.leg = quadruped_kinematics::srv::LegIK::Request::REAR_LEFT_LEG;
+  rl_request.foot_point = request->rear_left_foot;
+  rr_request.leg = quadruped_kinematics::srv::LegIK::Request::REAR_RIGHT_LEG;
+  rr_request.foot_point = request->rear_right_foot;
 
   response->front_right_joints = computeLegIK(fr_request);
   response->front_left_joints  = computeLegIK(fl_request);
-  response->back_left_joints   = computeLegIK(bl_request);
-  response->back_right_joints  = computeLegIK(br_request);
+  response->rear_left_joints   = computeLegIK(rl_request);
+  response->rear_right_joints  = computeLegIK(rr_request);
 
 }
 

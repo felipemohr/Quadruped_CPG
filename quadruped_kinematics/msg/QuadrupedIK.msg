@@ -4,5 +4,5 @@ geometry_msgs/Vector3 body_rotation
 
 geometry_msgs/Point front_right_foot
 geometry_msgs/Point front_left_foot
-geometry_msgs/Point back_left_foot
-geometry_msgs/Point back_right_foot
+geometry_msgs/Point rear_left_foot
+geometry_msgs/Point rear_right_foot
