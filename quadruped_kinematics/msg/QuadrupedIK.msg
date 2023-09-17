@@ -1,0 +1,8 @@
+bool use_feet_transforms
+geometry_msgs/Vector3 body_translation
+geometry_msgs/Vector3 body_rotation
+
+geometry_msgs/Point front_right_foot
+geometry_msgs/Point front_left_foot
+geometry_msgs/Point rear_left_foot
+geometry_msgs/Point rear_right_foot

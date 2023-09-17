@@ -1,0 +1,11 @@
+uint8 FRONT_RIGHT_LEG=0
+uint8 FRONT_LEFT_LEG=1
+uint8 REAR_LEFT_LEG=2
+uint8 REAR_RIGHT_LEG=3
+
+bool use_foot_transform
+geometry_msgs/Vector3 body_translation
+geometry_msgs/Vector3 body_rotation
+
+uint8 leg
+geometry_msgs/Point foot_point

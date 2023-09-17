@@ -1,0 +1,4 @@
+quadruped_kinematics/LegJoints front_right_joints
+quadruped_kinematics/LegJoints front_left_joints
+quadruped_kinematics/LegJoints rear_left_joints
+quadruped_kinematics/LegJoints rear_right_joints
