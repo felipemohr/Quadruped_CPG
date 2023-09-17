@@ -11,12 +11,12 @@ ik_server:
 
 ik_node:
   ros__parameters:
-    hip_joint:
+    hip_joint_range:
       lower_limit: -1.0472
       upper_limit: 1.0472
-    thigh_joint:
+    thigh_joint_range:
       lower_limit: -0.6632
       upper_limit: 2.9671
-    calf_joint:
+    calf_joint_range:
       lower_limit: -2.7227
       upper_limit: -0.8378

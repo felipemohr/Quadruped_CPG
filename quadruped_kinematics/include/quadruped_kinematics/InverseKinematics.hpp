@@ -39,4 +39,8 @@ class InverseKinematics : public rclcpp::Node
     quadruped_kinematics::msg::QuadrupedJoints _last_quadruped_joints;
     quadruped_kinematics::msg::LegJoints _last_leg_joints;
 
+    std::map<std::string, double> _hip_joint_range;
+    std::map<std::string, double> _thigh_joint_range;
+    std::map<std::string, double> _calf_joint_range;
+
 };

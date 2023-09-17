@@ -41,6 +41,15 @@ InverseKinematics::InverseKinematics() : Node("ik_node")
   _last_quadruped_joints.rear_left_joints   = _last_leg_joints;
   _last_quadruped_joints.rear_right_joints  = _last_leg_joints;
 
+  std::map<std::string, double> default_range = { {"lower_limit", -0.7854}, {"upper_limit", 0.7854} };
+  this->declare_parameters("hip_joint_range", default_range);
+  this->declare_parameters("thigh_joint_range", default_range);
+  this->declare_parameters("calf_joint_range", default_range);
+
+  this->get_parameters("hip_joint_range", _hip_joint_range);
+  this->get_parameters("thigh_joint_range", _thigh_joint_range);
+  this->get_parameters("calf_joint_range", _calf_joint_range);
+
   while (!_ik_client->wait_for_service(1s))
   {
     if (!rclcpp::ok())
