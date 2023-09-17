@@ -23,6 +23,9 @@ class InverseKinematics : public rclcpp::Node
 
     quadruped_kinematics::msg::QuadrupedJoints computeIK(const quadruped_kinematics::msg::QuadrupedIK::SharedPtr msg);
     quadruped_kinematics::msg::LegJoints computeLegIK(const quadruped_kinematics::msg::LegIK::SharedPtr msg);
+    
+    bool checkJointAnglesNaN(const quadruped_kinematics::msg::LegJoints leg_joints);
+    bool checkJointAnglesRange(const quadruped_kinematics::msg::LegJoints leg_joints);
 
     rclcpp::CallbackGroup::SharedPtr _callback_group;
     rclcpp::SubscriptionOptions _sub_options;

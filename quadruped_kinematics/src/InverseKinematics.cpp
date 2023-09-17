@@ -80,6 +80,25 @@ void InverseKinematics::IKCallback(const quadruped_kinematics::msg::QuadrupedIK:
 
   quadruped_kinematics::msg::QuadrupedJoints quadruped_joints = this->computeIK(msg);
 
+  if (!checkJointAnglesNaN(quadruped_joints.front_right_joints) ||
+      !checkJointAnglesNaN(quadruped_joints.front_left_joints)  ||
+      !checkJointAnglesNaN(quadruped_joints.rear_left_joints)   ||
+      !checkJointAnglesNaN(quadruped_joints.rear_right_joints)
+      )
+  {
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 3000, "NaN value computed, impossible to set IK");
+    return;
+  }
+  if (!checkJointAnglesRange(quadruped_joints.front_right_joints) ||
+      !checkJointAnglesRange(quadruped_joints.front_left_joints)  ||
+      !checkJointAnglesRange(quadruped_joints.rear_left_joints)   ||
+      !checkJointAnglesRange(quadruped_joints.rear_right_joints)
+     )
+  {
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 3000, "Leg joints angle out of range");
+    return;
+  }
+
   joint_commands_msg.header.frame_id = "";
   joint_commands_msg.header.stamp = this->get_clock()->now();
 
@@ -124,6 +143,17 @@ void InverseKinematics::legIKCallback(const quadruped_kinematics::msg::LegIK::Sh
 
   quadruped_kinematics::msg::LegJoints leg_joints = this->computeLegIK(msg);
 
+  if (!checkJointAnglesNaN(leg_joints))
+  {
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 3000, "NaN value computed, impossible to set IK");
+    return;
+  }
+  if (!checkJointAnglesRange(leg_joints))
+  {
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 3000, "Leg joints angle out of range");
+    return;
+  }
+
   std::string leg_prefix;
   switch (msg->leg)
   {
@@ -139,7 +169,7 @@ void InverseKinematics::legIKCallback(const quadruped_kinematics::msg::LegIK::Sh
   case quadruped_kinematics::msg::LegIK::REAR_RIGHT_LEG:
     leg_prefix = "RR_";
     break;
-  }  
+  }
 
   joint_commands_msg.header.frame_id = "";
   joint_commands_msg.header.stamp = this->get_clock()->now();
@@ -284,6 +314,21 @@ quadruped_kinematics::msg::LegJoints InverseKinematics::computeLegIK(const quadr
   return leg_joints;
 }
 
+bool InverseKinematics::checkJointAnglesNaN(const quadruped_kinematics::msg::LegJoints leg_joints)
+{
+  return !(std::isnan(leg_joints.hip_joint)   || 
+           std::isnan(leg_joints.thigh_joint) || 
+           std::isnan(leg_joints.calf_joint)
+          );
+}
+
+bool InverseKinematics::checkJointAnglesRange(const quadruped_kinematics::msg::LegJoints leg_joints)
+{
+  return ( (leg_joints.hip_joint   >= _hip_joint_range["lower_limit"]   && leg_joints.hip_joint   <= _hip_joint_range["upper_limit"])   &&
+           (leg_joints.thigh_joint >= _thigh_joint_range["lower_limit"] && leg_joints.thigh_joint <= _thigh_joint_range["upper_limit"]) &&
+           (leg_joints.calf_joint  >= _calf_joint_range["lower_limit"]  && leg_joints.calf_joint  <= _calf_joint_range["upper_limit"]) 
+         );
+}
 
 int main(int argc, char **argv)
 {
