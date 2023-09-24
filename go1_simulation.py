@@ -15,7 +15,7 @@ from omni.isaac.sensor import IMUSensor
 
 from omni.kit.viewport.utility import get_active_viewport
 
-from pxr import UsdGeom, Usd
+from pxr import UsdGeom, Gf
 
 import omni.graph.core as og
 
@@ -60,12 +60,16 @@ imu_sensor = IMUSensor(
 
 camera_optical_face_path = GO1_PRIM_PATH + "/camera_optical_face/camera"
 
+camera_prim = UsdGeom.Camera(world.scene.stage.DefinePrim(camera_optical_face_path, "Camera"))
+xform_api = UsdGeom.XformCommonAPI(camera_prim)
+xform_api.SetRotate([0, 180, 0], UsdGeom.XformCommonAPI.RotationOrderXYZ)
 camera_face_prim = UsdGeom.Camera(omni.usd.get_context().get_stage().DefinePrim(camera_optical_face_path, "Camera"))
 camera_face_prim.GetHorizontalApertureAttr().Set(21)
 camera_face_prim.GetVerticalApertureAttr().Set(16)
 camera_face_prim.GetProjectionAttr().Set("perspective")
 camera_face_prim.GetFocalLengthAttr().Set(24)
 camera_face_prim.GetFocusDistanceAttr().Set(400)
+camera_face_prim.GetClippingRangeAttr().Set(Gf.Vec2f(0.01, 1000))
 
 try:
     go1_joints_graph = og.Controller.edit(
