@@ -6,14 +6,17 @@ import omni
 
 from omni.isaac.core import World
 from omni.isaac.core_nodes.scripts.utils import set_target_prims
+from omni.isaac.core.utils.numpy.rotations import euler_angles_to_quats
 from omni.isaac.core.utils.extensions import enable_extension
 from omni.isaac.core.utils.nucleus import get_assets_root_path
 from omni.isaac.core.utils.stage import add_reference_to_stage
 from omni.isaac.core.robots import Robot
 
-from omni.isaac.sensor import IMUSensor
+from omni.isaac.sensor import IMUSensor, Camera
 
 from omni.kit.viewport.utility import get_active_viewport
+
+
 
 from pxr import UsdGeom, Gf
 
@@ -49,27 +52,28 @@ go1 = world.scene.add(
     )
 )
 
-imu_path = GO1_PRIM_PATH + "/imu_link"
+imu_path = GO1_PRIM_PATH + "/imu_link/imu_sensor"
 imu_sensor = IMUSensor(
-    prim_path=imu_path + "/imu_sensor",
+    prim_path=imu_path,
     name="imu",
     dt=1/60,
     translation=np.array([0, 0, 0]),
     orientation=np.array([1, 0, 0, 0]),
 )
 
-camera_optical_face_path = GO1_PRIM_PATH + "/camera_optical_face/camera"
-
-camera_prim = UsdGeom.Camera(world.scene.stage.DefinePrim(camera_optical_face_path, "Camera"))
-xform_api = UsdGeom.XformCommonAPI(camera_prim)
-xform_api.SetRotate([0, 180, 0], UsdGeom.XformCommonAPI.RotationOrderXYZ)
-camera_face_prim = UsdGeom.Camera(omni.usd.get_context().get_stage().DefinePrim(camera_optical_face_path, "Camera"))
-camera_face_prim.GetHorizontalApertureAttr().Set(21)
-camera_face_prim.GetVerticalApertureAttr().Set(16)
-camera_face_prim.GetProjectionAttr().Set("perspective")
-camera_face_prim.GetFocalLengthAttr().Set(24)
-camera_face_prim.GetFocusDistanceAttr().Set(400)
-camera_face_prim.GetClippingRangeAttr().Set(Gf.Vec2f(0.01, 1000))
+camera_face_path = GO1_PRIM_PATH + "/camera_optical_face/camera"
+camera_face_sensor = Camera(
+    prim_path=camera_face_path,
+    frequency=20,
+    resolution=(640, 420),
+    orientation=euler_angles_to_quats(np.array([-90, -90, 0]), degrees=True),
+)
+camera_face_sensor.set_horizontal_aperture(21)
+camera_face_sensor.set_vertical_aperture(16)
+camera_face_sensor.set_projection_mode("perspective")
+camera_face_sensor.set_focal_length(24)
+camera_face_sensor.set_focus_distance(400)
+camera_face_sensor.set_clipping_range(0.01, 1000)
 
 try:
     go1_joints_graph = og.Controller.edit(
@@ -181,10 +185,10 @@ set_target_prims(
     primPath="/Go1_Joints/PublishTF", targetPrimPaths=[GO1_PRIM_PATH], inputName="inputs:targetPrims"
 )
 set_target_prims(
-    primPath="/Go1_IMU/ReadIMU", targetPrimPaths=[imu_path+"/imu_sensor"], inputName="inputs:imuPrim"
+    primPath="/Go1_IMU/ReadIMU", targetPrimPaths=[imu_path], inputName="inputs:imuPrim"
 )
 set_target_prims(
-    primPath="/Go1_Cameras/SetCamera", targetPrimPaths=[camera_optical_face_path], inputName="inputs:cameraPrim"
+    primPath="/Go1_Cameras/SetCamera", targetPrimPaths=[camera_face_path], inputName="inputs:cameraPrim"
 )
 
 
