@@ -2,6 +2,8 @@ from omni.isaac.kit import SimulationApp
 
 simulation_app = SimulationApp({"headless": False})
 
+import omni
+
 from omni.isaac.core import World
 from omni.isaac.core_nodes.scripts.utils import set_target_prims
 from omni.isaac.core.utils.extensions import enable_extension
@@ -10,6 +12,10 @@ from omni.isaac.core.utils.stage import add_reference_to_stage
 from omni.isaac.core.robots import Robot
 
 from omni.isaac.sensor import IMUSensor
+
+from omni.kit.viewport.utility import get_active_viewport
+
+from pxr import UsdGeom, Usd
 
 import omni.graph.core as og
 
@@ -52,7 +58,14 @@ imu_sensor = IMUSensor(
     orientation=np.array([1, 0, 0, 0]),
 )
 
-simulation_app.update()
+camera_optical_face_path = GO1_PRIM_PATH + "/camera_optical_face/camera"
+
+camera_face_prim = UsdGeom.Camera(omni.usd.get_context().get_stage().DefinePrim(camera_optical_face_path, "Camera"))
+camera_face_prim.GetHorizontalApertureAttr().Set(21)
+camera_face_prim.GetVerticalApertureAttr().Set(16)
+camera_face_prim.GetProjectionAttr().Set("perspective")
+camera_face_prim.GetFocalLengthAttr().Set(24)
+camera_face_prim.GetFocusDistanceAttr().Set(400)
 
 try:
     go1_joints_graph = og.Controller.edit(
@@ -121,9 +134,41 @@ try:
             ],
         },
     )
+    go1_camera = og.Controller.edit(
+        {"graph_path": "/Go1_Cameras", "evaluator_name": "execution"},
+        {
+            og.Controller.Keys.CREATE_NODES: [
+                ("OnImpulseEvent", "omni.graph.action.OnImpulseEvent"),
+                ("Context", "omni.isaac.ros2_bridge.ROS2Context"),
+                ("CreateViewport", "omni.isaac.core_nodes.IsaacCreateViewport"),
+                ("GetViewportRenderProduct", "omni.isaac.core_nodes.IsaacGetViewportRenderProduct"),
+                ("SetCamera", "omni.isaac.core_nodes.IsaacSetCameraOnRenderProduct"),
+                ("CameraHelper", "omni.isaac.ros2_bridge.ROS2CameraHelper"),
+            ],
+            og.Controller.Keys.CONNECT: [
+                ("OnImpulseEvent.outputs:execOut", "CreateViewport.inputs:execIn"),
+                ("CreateViewport.outputs:execOut", "GetViewportRenderProduct.inputs:execIn"),
+                ("CreateViewport.outputs:viewport", "GetViewportRenderProduct.inputs:viewport"),
+
+                ("GetViewportRenderProduct.outputs:execOut", "SetCamera.inputs:execIn"),
+                ("GetViewportRenderProduct.outputs:renderProductPath", "SetCamera.inputs:renderProductPath"),
+                ("SetCamera.outputs:execOut", "CameraHelper.inputs:execIn"),
+                ("GetViewportRenderProduct.outputs:renderProductPath", "CameraHelper.inputs:renderProductPath"),
+
+                ("Context.outputs:context", "CameraHelper.inputs:context"),
+            ],
+            og.Controller.Keys.SET_VALUES: [
+                ("CreateViewport.inputs:name", "Camera Viewport"),
+                ("CameraHelper.inputs:frameId", "camera"),
+                ("CameraHelper.inputs:topicName", "/camera/image"),
+                ("CameraHelper.inputs:type", "rgb"),
+            ],
+        },
+    )
 except Exception as e:
     print(e)
 
+simulation_app.update()
 
 set_target_prims(
     primPath="/Go1_Joints/PublishJointState", targetPrimPaths=[GO1_PRIM_PATH], inputName="inputs:targetPrim"
@@ -134,6 +179,10 @@ set_target_prims(
 set_target_prims(
     primPath="/Go1_IMU/ReadIMU", targetPrimPaths=[imu_path+"/imu_sensor"], inputName="inputs:imuPrim"
 )
+set_target_prims(
+    primPath="/Go1_Cameras/SetCamera", targetPrimPaths=[camera_optical_face_path], inputName="inputs:cameraPrim"
+)
+
 
 world.reset()
 
@@ -142,5 +191,6 @@ while simulation_app.is_running():
 
     og.Controller.set(og.Controller.attribute("/Go1_Joints/OnImpulseEvent.state:enableImpulse"), True)
     og.Controller.set(og.Controller.attribute("/Go1_IMU/OnImpulseEvent.state:enableImpulse"), True)
+    og.Controller.set(og.Controller.attribute("/Go1_Cameras/OnImpulseEvent.state:enableImpulse"), True)
 
 simulation_app.close()
