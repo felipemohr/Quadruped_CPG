@@ -11,6 +11,23 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(quadruped_kinematics REQUIRED)
 
+add_executable(joy_teleop_node src/JoyTeleop.cpp)
+ament_target_dependencies(joy_teleop_node rclcpp sensor_msgs quadruped_kinematics)
+
+include_directories(include)
+
+install(
+  TARGETS
+    joy_teleop_node
+  DESTINATION
+    lib/${PROJECT_NAME}
+)
+
+install(
+  DIRECTORY launch config
+  DESTINATION share/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
