@@ -9,6 +9,8 @@ from omni.isaac.core.utils.nucleus import get_assets_root_path
 from omni.isaac.core.utils.stage import add_reference_to_stage
 from omni.isaac.core.robots import Robot
 
+from omni.isaac.sensor import IMUSensor
+
 import omni.graph.core as og
 
 import numpy as np
@@ -16,7 +18,7 @@ import carb
 import sys
 import os
 
-GO1_STAGE_PATH = "/World/Go1"
+GO1_PRIM_PATH = "/World/Go1"
 
 enable_extension("omni.isaac.ros2_bridge-humble")
 
@@ -31,21 +33,30 @@ if not os.path.exists(go1_asset_path):
     simulation_app.close()
     sys.exit()
 
-add_reference_to_stage(usd_path=go1_asset_path, prim_path=GO1_STAGE_PATH)
+add_reference_to_stage(usd_path=go1_asset_path, prim_path=GO1_PRIM_PATH)
 
 go1 = world.scene.add(
     Robot(
-        prim_path=GO1_STAGE_PATH,
+        prim_path=GO1_PRIM_PATH,
         position=np.array([0.0, 0.0, 0.5]),
         name="go1",
     )
 )
 
+imu_path = GO1_PRIM_PATH + "/imu_link"
+imu_sensor = IMUSensor(
+    prim_path=imu_path + "/imu_sensor",
+    name="imu",
+    dt=1/60,
+    translation=np.array([0, 0, 0]),
+    orientation=np.array([1, 0, 0, 0]),
+)
+
 simulation_app.update()
 
 try:
-    og.Controller.edit(
-        {"graph_path": "/Go1Joints", "evaluator_name": "execution"},
+    go1_joints_graph = og.Controller.edit(
+        {"graph_path": "/Go1_Joints", "evaluator_name": "execution"},
         {
             og.Controller.Keys.CREATE_NODES: [
                 ("OnImpulseEvent", "omni.graph.action.OnImpulseEvent"),
@@ -77,7 +88,36 @@ try:
             ],
             og.Controller.Keys.SET_VALUES: [
                 ("ArticulationController.inputs:usePath", True),
-                ("ArticulationController.inputs:robotPath", GO1_STAGE_PATH),
+                ("ArticulationController.inputs:robotPath", GO1_PRIM_PATH),
+            ],
+        },
+    )
+    go1_imu_graph = og.Controller.edit(
+        {"graph_path": "/Go1_IMU", "evaluator_name": "execution"},
+        {
+            og.Controller.Keys.CREATE_NODES: [
+                ("OnImpulseEvent", "omni.graph.action.OnImpulseEvent"),
+                ("ReadSimTime", "omni.isaac.core_nodes.IsaacReadSimulationTime"),
+                ("Context", "omni.isaac.ros2_bridge.ROS2Context"),
+
+                ("ReadIMU", "omni.isaac.sensor.IsaacReadIMU"),
+                ("PublishIMU", "omni.isaac.ros2_bridge.ROS2PublishImu"),
+            ],
+            og.Controller.Keys.CONNECT: [
+                ("OnImpulseEvent.outputs:execOut", "ReadIMU.inputs:execIn"),
+                ("ReadSimTime.outputs:simulationTime", "PublishIMU.inputs:timeStamp"),
+                ("Context.outputs:context", "PublishIMU.inputs:context"),
+
+                ("ReadIMU.outputs:execOut", "PublishIMU.inputs:execIn"),
+                ("ReadIMU.outputs:angVel", "PublishIMU.inputs:angularVelocity"),
+                ("ReadIMU.outputs:linAcc", "PublishIMU.inputs:linearAcceleration"),
+                ("ReadIMU.outputs:orientation", "PublishIMU.inputs:orientation"),
+            ],
+            og.Controller.Keys.SET_VALUES: [
+                ("PublishIMU.inputs:publishAngularVelocity", True),
+                ("PublishIMU.inputs:publishLinearAcceleration", True),
+                ("PublishIMU.inputs:publishOrientation", True),
+                ("PublishIMU.inputs:frameId", "imu"),
             ],
         },
     )
@@ -86,19 +126,21 @@ except Exception as e:
 
 
 set_target_prims(
-    primPath="/Go1Joints/PublishJointState", targetPrimPaths=[GO1_STAGE_PATH], inputName="inputs:targetPrim"
+    primPath="/Go1_Joints/PublishJointState", targetPrimPaths=[GO1_PRIM_PATH], inputName="inputs:targetPrim"
 )
 set_target_prims(
-    primPath="/Go1Joints/PublishTF", targetPrimPaths=[GO1_STAGE_PATH], inputName="inputs:targetPrims"
+    primPath="/Go1_Joints/PublishTF", targetPrimPaths=[GO1_PRIM_PATH], inputName="inputs:targetPrims"
 )
-
+set_target_prims(
+    primPath="/Go1_IMU/ReadIMU", targetPrimPaths=[imu_path+"/imu_sensor"], inputName="inputs:imuPrim"
+)
 
 world.reset()
 
 while simulation_app.is_running():
     world.step(render=True)
 
-    og.Controller.set(og.Controller.attribute("/Go1Joints/OnImpulseEvent.state:enableImpulse"), True)
-
+    og.Controller.set(og.Controller.attribute("/Go1_Joints/OnImpulseEvent.state:enableImpulse"), True)
+    og.Controller.set(og.Controller.attribute("/Go1_IMU/OnImpulseEvent.state:enableImpulse"), True)
 
 simulation_app.close()
