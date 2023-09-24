@@ -30,15 +30,19 @@ class JoyTeleop : public rclcpp::Node
     EMAFilter _body_translation_x;
     EMAFilter _body_translation_y;
     EMAFilter _body_translation_z;
+    EMAFilter _body_rotation_x;
+    EMAFilter _body_rotation_y;
     EMAFilter _body_rotation_z;
 
     std::map<std::string, uint8_t> _axis_linear_map;
     std::map<std::string, uint8_t> _axis_angular_map;
+    std::map<std::string, uint8_t> _button_angular_map;
     std::map<std::string, double> _ik_limits;
     double _filter_beta;
 
     std::map<std::string, uint8_t> _default_axis_linear_map;
     std::map<std::string, uint8_t> _default_axis_angular_map;
+    std::map<std::string, uint8_t> _default_button_angular_map;
     std::map<std::string, double> _default_ik_limits;
 
 };
