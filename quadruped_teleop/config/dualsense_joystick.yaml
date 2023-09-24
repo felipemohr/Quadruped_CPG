@@ -1,0 +1,14 @@
+joy_teleop_node:
+  ros__parameters:
+    filter_beta: 0.90
+    axis_linear:
+      x: 1
+      y: 0
+      z: 4
+    axis_angular:
+      pitch_positive : 5
+      pitch_negative : 2
+      yaw: 3
+    button_angular:
+      roll_positive : 5
+      roll_negative : 4

@@ -1,0 +1,9 @@
+joy_teleop_node:
+  ros__parameters:
+    ik_limits:
+      x: 0.08
+      y: 0.08
+      z: 0.08
+      roll: 0.75
+      pitch: 0.45
+      yaw: 0.75
