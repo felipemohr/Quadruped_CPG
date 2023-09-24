@@ -22,12 +22,17 @@ JoyTeleop::JoyTeleop() : Node("joy_teleop_node")
 
   _default_axis_linear_map  = { {"x", 0}, {"y", 1}, {"z", 2} };
   _default_axis_angular_map = { {"yaw", 3} };
+  _default_ik_limits = { {"x", 0.1}, {"y", 0.1}, {"z", 0.1}, {"yaw", 1.0} };
+
+  _ik_msg.use_feet_transforms = true;
 
   this->declare_parameters("axis_linear", _default_axis_linear_map);
   this->declare_parameters("axis_angular", _default_axis_angular_map);
+  this->declare_parameters("ik_limits", _default_ik_limits);
 
   this->get_parameters("axis_linear", _axis_linear_map);
   this->get_parameters("axis_angular", _axis_angular_map);
+  this->get_parameters("ik_limits", _ik_limits);
 
 }
 
@@ -37,14 +42,17 @@ JoyTeleop::~JoyTeleop()
 
 void JoyTeleop::joyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
 {
-  RCLCPP_INFO(this->get_logger(), "joyCallback");
+
+  _ik_msg.body_translation.x = _ik_limits["x"] * msg->axes[_axis_linear_map["x"]];
+  _ik_msg.body_translation.y = _ik_limits["y"] * msg->axes[_axis_linear_map["y"]];
+  _ik_msg.body_translation.z = _ik_limits["z"] * msg->axes[_axis_linear_map["z"]];
+  _ik_msg.body_rotation.z = _ik_limits["yaw"] * msg->axes[_axis_angular_map["yaw"]];
 
 }
 
 void JoyTeleop::publishIKCallback()
 {
-  RCLCPP_INFO(this->get_logger(), "publishIKCallback");
-
+  _cmd_ik_publisher->publish(_ik_msg);
 }
 
 

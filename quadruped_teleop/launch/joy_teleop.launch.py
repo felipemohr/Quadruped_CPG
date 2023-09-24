@@ -13,6 +13,9 @@ def generate_launch_description():
     default_joystick_config = os.path.join(quadruped_teleop_pkg_share, 'config', 'dualsense_joystick.yaml')
     joystick_config = LaunchConfiguration('joystick_config', default=default_joystick_config)
 
+    default_quadruped_limits_config = os.path.join(quadruped_teleop_pkg_share, 'config', 'go1_limits.yaml')
+    quadruped_limits_config = LaunchConfiguration('quadruped_limits', default=default_quadruped_limits_config)
+
     joy_node = Node(
         package='joy',
         executable='joy_node',
@@ -30,12 +33,14 @@ def generate_launch_description():
         package='quadruped_teleop',
         executable='joy_teleop_node',
         name='joy_teleop_node',
-        parameters=[joystick_config]
+        parameters=[quadruped_limits_config, joystick_config]
     )
 
-    return LaunchDescription({
+    return LaunchDescription([
         DeclareLaunchArgument(name='joystick_config', default_value=default_joystick_config,
                               description='Absolute path to joystick config file'),
+        DeclareLaunchArgument(name='quadruped_limits', default_value=default_quadruped_limits_config,
+                              description='Absolute path to quadruped limits config file'),
         joy_node,
         joy_teleop_node
-    })
+    ])

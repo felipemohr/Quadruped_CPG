@@ -23,11 +23,15 @@ class JoyTeleop : public rclcpp::Node
 
     rclcpp::TimerBase::SharedPtr _publish_ik_timer;
 
+    quadruped_kinematics::msg::QuadrupedIK _ik_msg;
+
     std::map<std::string, uint8_t> _axis_linear_map;
     std::map<std::string, uint8_t> _axis_angular_map;
+    std::map<std::string, double> _ik_limits;
 
     std::map<std::string, uint8_t> _default_axis_linear_map;
     std::map<std::string, uint8_t> _default_axis_angular_map;
+    std::map<std::string, double> _default_ik_limits;
 
 };
 
