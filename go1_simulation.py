@@ -6,7 +6,7 @@ import omni
 
 from omni.isaac.core import World
 from omni.isaac.core_nodes.scripts.utils import set_target_prims
-from omni.isaac.core.utils.numpy.rotations import euler_angles_to_quats
+from omni.isaac.core.utils.numpy.rotations import euler_angles_to_quats, quats_to_euler_angles
 from omni.isaac.core.utils.extensions import enable_extension
 from omni.isaac.core.utils.nucleus import get_assets_root_path
 from omni.isaac.core.utils.stage import add_reference_to_stage
@@ -23,13 +23,17 @@ import carb
 import sys
 import os
 
+enable_extension("omni.isaac.ros2_bridge-humble")
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import Imu
+
 class GO1_Robot(Robot):
     def __init__(
         self,
         prim_path: str,
         name: str = "go1",
         usd_path: str = "go1.usd",
-        use_ros2: bool = True,
         use_camera: bool = True,
         physics_dt: Optional[float] = 1 / 400.0,
         position: Optional[Sequence[float]] = None,
@@ -43,27 +47,31 @@ class GO1_Robot(Robot):
             sys.exit()
 
         add_reference_to_stage(usd_path=usd_path, prim_path=prim_path)
-    
+
         Robot.__init__(self, 
                        prim_path=prim_path, 
                        name=name, 
                        position=position, 
                        translation=translation, 
                        orientation=orientation)
-        
+
         self._prim_path = prim_path
         self._physics_dt = physics_dt
         self._use_camera = use_camera
-        self._use_ros2 = use_ros2
+
+        self._body_rotation = np.zeros(3)
+        self._body_lin_acc = np.zeros(3)
+        self._body_ang_vel = np.zeros(3)
 
         self.createSensors()
 
-        if self._use_ros2:
-            enable_extension("omni.isaac.ros2_bridge-humble")
-            self.createROS2Graphs()
-
     def createSensors(self):
         self._imu_path = self._prim_path + "/imu_link/imu_sensor"
+        
+        self._imu_rotation_std = 0.01
+        self._imu_lin_acc_std = 0.01
+        self._imu_ang_vel_std = 0.01
+
         self._imu_sensor = IMUSensor(
             prim_path=self._imu_path,
             name="imu",
@@ -90,6 +98,55 @@ class GO1_Robot(Robot):
             self._camera_face_sensor.set_clipping_range(0.01, 1000)
 
             self._sensors.append(self._camera_face_sensor)
+
+    def updateImuData(self):
+        frame = self._imu_sensor.get_current_frame()
+
+        self._body_rotation = quats_to_euler_angles(frame["orientation"]) + np.random.normal(0, self._imu_rotation_std, 3)
+        self._body_lin_acc = frame["lin_acc"] + np.random.normal(0, self._imu_lin_acc_std, 3)
+        self._body_ang_vel = frame["ang_vel"] + np.random.normal(0, self._imu_ang_vel_std, 3)
+        
+        return {"rotation": self._body_rotation,
+                "lin_acc": self._body_lin_acc,
+                "ang_vel": self._body_ang_vel,
+                "rotation_cov": np.diag([self._imu_rotation_std**2, self._imu_rotation_std**2, self._imu_rotation_std**2]),
+                "lin_acc_cov": np.diag([self._imu_lin_acc_std**2, self._imu_lin_acc_std**2, self._imu_lin_acc_std**2]),
+                "ang_vel_cov": np.diag([self._imu_ang_vel_std**2, self._imu_ang_vel_std**2, self._imu_ang_vel_std**2])}
+        
+
+class GO1_Node(Node):
+    def __init__(self, go1_robot: GO1_Robot):
+        self._go1 = go1_robot
+
+        self.createROS2Graphs()
+
+        Node.__init__(self, "go1_node")
+
+        self._imu_publisher = self.create_publisher(Imu, 'go1_imu', 10)
+        self._imu_msg = Imu()
+        self._imu_timer = self.create_timer(0.02, self.imuCallback)
+
+    def imuCallback(self):
+        data = self._go1.updateImuData()
+        quat = euler_angles_to_quats(data["rotation"])
+
+        self._imu_msg.header.stamp = self.get_clock().now().to_msg()
+        self._imu_msg.header.frame_id = "imu_link"
+        self._imu_msg.orientation.w = quat[0]
+        self._imu_msg.orientation.x = quat[1]
+        self._imu_msg.orientation.y = quat[2]
+        self._imu_msg.orientation.z = quat[3]
+        self._imu_msg.linear_acceleration.x = data["lin_acc"][0]
+        self._imu_msg.linear_acceleration.y = data["lin_acc"][1]
+        self._imu_msg.linear_acceleration.z = data["lin_acc"][2]
+        self._imu_msg.angular_velocity.x = data["ang_vel"][0]
+        self._imu_msg.angular_velocity.y = data["ang_vel"][1]
+        self._imu_msg.angular_velocity.z = data["ang_vel"][2]
+        self._imu_msg.orientation_covariance = data["rotation_cov"].flatten()
+        self._imu_msg.linear_acceleration_covariance = data["lin_acc_cov"].flatten()
+        self._imu_msg.angular_velocity_covariance = data["ang_vel_cov"].flatten()
+
+        self._imu_publisher.publish(self._imu_msg)
 
     def createROS2Graphs(self):
         try:
@@ -126,40 +183,11 @@ class GO1_Robot(Robot):
                     ],
                     og.Controller.Keys.SET_VALUES: [
                         ("ArticulationController.inputs:usePath", True),
-                        ("ArticulationController.inputs:robotPath", GO1_PRIM_PATH),
+                        ("ArticulationController.inputs:robotPath", self._go1._prim_path),
                     ],
                 },
             )
-            self._go1_imu_graph = og.Controller.edit(
-                {"graph_path": "/Go1_IMU", "evaluator_name": "execution"},
-                {
-                    og.Controller.Keys.CREATE_NODES: [
-                        ("OnImpulseEvent", "omni.graph.action.OnImpulseEvent"),
-                        ("ReadSimTime", "omni.isaac.core_nodes.IsaacReadSimulationTime"),
-                        ("Context", "omni.isaac.ros2_bridge.ROS2Context"),
-
-                        ("ReadIMU", "omni.isaac.sensor.IsaacReadIMU"),
-                        ("PublishIMU", "omni.isaac.ros2_bridge.ROS2PublishImu"),
-                    ],
-                    og.Controller.Keys.CONNECT: [
-                        ("OnImpulseEvent.outputs:execOut", "ReadIMU.inputs:execIn"),
-                        ("ReadSimTime.outputs:simulationTime", "PublishIMU.inputs:timeStamp"),
-                        ("Context.outputs:context", "PublishIMU.inputs:context"),
-
-                        ("ReadIMU.outputs:execOut", "PublishIMU.inputs:execIn"),
-                        ("ReadIMU.outputs:angVel", "PublishIMU.inputs:angularVelocity"),
-                        ("ReadIMU.outputs:linAcc", "PublishIMU.inputs:linearAcceleration"),
-                        ("ReadIMU.outputs:orientation", "PublishIMU.inputs:orientation"),
-                    ],
-                    og.Controller.Keys.SET_VALUES: [
-                        ("PublishIMU.inputs:publishAngularVelocity", True),
-                        ("PublishIMU.inputs:publishLinearAcceleration", True),
-                        ("PublishIMU.inputs:publishOrientation", True),
-                        ("PublishIMU.inputs:frameId", "imu"),
-                    ],
-                },
-            )
-            if self._use_camera:
+            if self._go1._use_camera:
                 self._go1_camera = og.Controller.edit(
                     {"graph_path": "/Go1_Cameras", "evaluator_name": "execution"},
                     {
@@ -195,45 +223,43 @@ class GO1_Robot(Robot):
             print(e)
         
         set_target_prims(
-            primPath="/Go1_Joints/PublishJointState", targetPrimPaths=[self._prim_path], inputName="inputs:targetPrim"
+            primPath="/Go1_Joints/PublishJointState", targetPrimPaths=[self._go1._prim_path], inputName="inputs:targetPrim"
         )
         set_target_prims(
-            primPath="/Go1_Joints/PublishTF", targetPrimPaths=[self._prim_path], inputName="inputs:targetPrims"
+            primPath="/Go1_Joints/PublishTF", targetPrimPaths=[self._go1._prim_path], inputName="inputs:targetPrims"
         )
-        set_target_prims(
-            primPath="/Go1_IMU/ReadIMU", targetPrimPaths=[self._imu_path], inputName="inputs:imuPrim"
-        )
-        if self._use_camera:
+        if self._go1._use_camera:
             set_target_prims(
-                primPath="/Go1_Cameras/SetCamera", targetPrimPaths=[self._camera_face_path], inputName="inputs:cameraPrim"
+                primPath="/Go1_Cameras/SetCamera", targetPrimPaths=[self._go1._camera_face_path], inputName="inputs:cameraPrim"
             )
 
+if __name__ == "__main__":
 
-GO1_PRIM_PATH = "/World/Go1"
+    rclpy.init()
 
-world = World()
-world.scene.add_default_ground_plane()
+    GO1_PRIM_PATH = "/World/Go1"
 
-go1 = world.scene.add(
-    GO1_Robot(
+    world = World()
+    world.scene.add_default_ground_plane()
+
+    go1_robot = GO1_Robot(
         prim_path=GO1_PRIM_PATH,
         position=np.array([0.0, 0.0, 0.5]),
         name="go1",
         usd_path="go1.usd",
-        use_ros2=True,
         use_camera=False
     )
-)
+    go1_node = GO1_Node(go1_robot)
+    go1 = world.scene.add(go1_robot)
 
-simulation_app.update()
+    simulation_app.update()
+    world.reset()
 
-world.reset()
+    while simulation_app.is_running():
+        world.step(render=True)
+        
+        og.Controller.set(og.Controller.attribute("/Go1_Joints/OnImpulseEvent.state:enableImpulse"), True)
 
-while simulation_app.is_running():
-    world.step(render=True)
+        rclpy.spin_once(go1_node)
 
-    og.Controller.set(og.Controller.attribute("/Go1_Joints/OnImpulseEvent.state:enableImpulse"), True)
-    og.Controller.set(og.Controller.attribute("/Go1_IMU/OnImpulseEvent.state:enableImpulse"), True)
-    # og.Controller.set(og.Controller.attribute("/Go1_Cameras/OnImpulseEvent.state:enableImpulse"), True)
-
-simulation_app.close()
+    simulation_app.close()
