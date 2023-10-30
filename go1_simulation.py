@@ -12,7 +12,7 @@ from omni.isaac.core.utils.nucleus import get_assets_root_path
 from omni.isaac.core.utils.stage import add_reference_to_stage
 from omni.isaac.core.robots import Robot
 
-from omni.isaac.sensor import IMUSensor, Camera
+from omni.isaac.sensor import IMUSensor, ContactSensor, Camera
 
 import omni.graph.core as og
 
@@ -26,6 +26,7 @@ import os
 enable_extension("omni.isaac.ros2_bridge-humble")
 import rclpy
 from rclpy.node import Node
+from std_msgs.msg import Float64
 from sensor_msgs.msg import Imu
 
 class GO1_Robot(Robot):
@@ -82,6 +83,24 @@ class GO1_Robot(Robot):
 
         self._sensors.append(self._imu_sensor)
 
+        self._feet_order = ["FL_foot", "FR_foot", "RL_foot", "RR_foot"]
+
+        self._foot_force = dict()
+        for foot in self._feet_order:
+            self._foot_force[foot] = 0.0
+        self._foot_filter_beta = 0.95
+
+        self._contact_sensors = dict()
+        for foot in self._feet_order:
+            self._contact_sensors[foot] = ContactSensor(
+                prim_path=self._prim_path + "/" + foot + "/sensor",
+                min_threshold=0,
+                max_threshold=1000000,
+                radius=0.03,
+                dt=self._physics_dt,
+            )
+            self._sensors.append(self._contact_sensors[foot])
+
         if self._use_camera:
             self._camera_face_path = self._prim_path + "/camera_optical_face/camera"
             self._camera_face_sensor = Camera(
@@ -113,6 +132,12 @@ class GO1_Robot(Robot):
                 "lin_acc_cov": np.diag([self._imu_lin_acc_std**2, self._imu_lin_acc_std**2, self._imu_lin_acc_std**2]),
                 "ang_vel_cov": np.diag([self._imu_ang_vel_std**2, self._imu_ang_vel_std**2, self._imu_ang_vel_std**2])}
         
+    def updateContactSensorsData(self):
+        for foot in self._feet_order:
+            frame = self._contact_sensors[foot].get_current_frame()
+            if "force" in frame:
+                self._foot_force[foot] = (1 - self._foot_filter_beta) * self._foot_force[foot] + self._foot_filter_beta * frame["force"]
+        return self._foot_force
 
 class GO1_Node(Node):
     def __init__(self, go1_robot: GO1_Robot):
@@ -122,10 +147,17 @@ class GO1_Node(Node):
 
         Node.__init__(self, "go1_node")
 
-        self._imu_publisher = self.create_publisher(Imu, 'go1_imu', 10)
+        self._imu_publisher = self.create_publisher(Imu, 'imu', 10)
         self._imu_msg = Imu()
         self._imu_timer = self.create_timer(0.02, self.imuCallback)
 
+        self._foot_publisher = dict()
+        self._foot_msg = dict()
+        for foot in self._go1._feet_order:
+            self._foot_publisher[foot] = self.create_publisher(Float64, foot+'_force', 10)
+            self._foot_msg[foot] = Float64()
+        self._feet_timer = self.create_timer(0.05, self.contactSensorsCallback)
+        
     def imuCallback(self):
         data = self._go1.updateImuData()
         quat = euler_angles_to_quats(data["rotation"])
@@ -147,6 +179,12 @@ class GO1_Node(Node):
         self._imu_msg.angular_velocity_covariance = data["ang_vel_cov"].flatten()
 
         self._imu_publisher.publish(self._imu_msg)
+
+    def contactSensorsCallback(self):
+        data = self._go1.updateContactSensorsData()
+        for foot in self._go1._feet_order:
+            self._foot_msg[foot].data = data[foot]
+            self._foot_publisher[foot].publish(self._foot_msg[foot])
 
     def createROS2Graphs(self):
         try:
