@@ -7,13 +7,15 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(Eigen3 REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(quadruped_kinematics REQUIRED)
 
 include_directories(include)
+include_directories(${EIGEN3_INCLUDE_DIR})
 
 add_executable(gait_planner src/GaitPlanner.cpp)
-ament_target_dependencies(gait_planner rclcpp quadruped_kinematics)
+ament_target_dependencies(gait_planner rclcpp quadruped_kinematics Eigen3)
 
 install(TARGETS
   gait_planner

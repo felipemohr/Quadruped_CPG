@@ -16,7 +16,42 @@ GaitPlanner::GaitPlanner() : Node("gait_planner_node")
   _cmd_ik_publisher = this->create_publisher<quadruped_kinematics::msg::QuadrupedIK>("cmd_ik", 10);
   _publish_ik_timer = this->create_wall_timer(10ms, std::bind(&GaitPlanner::publishIKCallback, this));
 
-  _start_time = this->get_clock()->now();
+  _last_time = this->get_clock()->now();
+
+  // Trot gait
+  _coupling_matrix << 0, M_PI, M_PI, 0,
+                     -M_PI, 0, 0, -M_PI,
+                     -M_PI, 0, 0, -M_PI,
+                      0, M_PI, M_PI, 0;
+
+  // // Walk gait
+  // _coupling_matrix << 0, M_PI, M_PI_2, 3*M_PI_2,
+  //                     -M_PI, 0, -M_PI_2, -3*M_PI_2,
+  //                     -M_PI_2, M_PI_2, 0, -M_PI,
+  //                     -3*M_PI_2, 3*M_PI_2, M_PI, 0;
+
+  // // Pace gait
+  // _coupling_matrix << 0, M_PI, M_PI, M_PI,
+  //                     -M_PI, 0, -M_PI, 0,
+  //                     0, M_PI, 0, M_PI,
+  //                     -M_PI, 0, -M_PI, 0;
+
+  // // Gallop gait
+  // _coupling_matrix << 0, 0, -M_PI, -M_PI,
+  //                     0, 0, -M_PI, -M_PI,
+  //                     M_PI, M_PI, 0, 0,
+  //                     M_PI, M_PI, 0, 0;
+
+  _amplitude_r = Eigen::Vector4d::Random();
+  _phase_theta = Eigen::Vector4d::Random();
+
+  _coupling_weights.setOnes();
+
+  _amplitude_mu.setConstant(1.5);
+  _frequency_omega.setConstant(1.0 * 2 * M_PI);
+  _convergence_factor_a.setConstant(50.0);
+
+  _ik_msg.use_feet_transforms = true;
 
 }
 
@@ -27,34 +62,40 @@ GaitPlanner::~GaitPlanner()
 
 void GaitPlanner::publishIKCallback()
 {
-  float elapsed_time = this->get_clock()->now().seconds() - _start_time.seconds();
+  float dt = this->get_clock()->now().seconds() - _last_time.seconds();
 
-  quadruped_kinematics::msg::QuadrupedIK ik_msg;
-  ik_msg.use_feet_transforms = true;
+  _amplitude_d2r = _convergence_factor_a.array() * (_convergence_factor_a.array() / 4.0 * (_amplitude_mu.array() - _amplitude_r.array()) - _amplitude_dr.array());
+  _amplitude_dr += _amplitude_d2r * dt;
 
-  float sine_fr = sin(2*M_PI*_frequency * elapsed_time);
-  float sine_fl = sin(2*M_PI*_frequency * elapsed_time + M_PI);
-  float sine_rl = sin(2*M_PI*_frequency * elapsed_time + M_PI/2);
-  float sine_rr = sin(2*M_PI*_frequency * elapsed_time + 3*M_PI/2);
+  _phase_dtheta = _frequency_omega;
+  for (int i=0; i<4; i++)
+    for (int j=0; j<4; j++)
+        _phase_dtheta(i) += _amplitude_r(j) * _coupling_weights(i,j) * sin(_phase_theta(j) - _phase_theta(i) - _coupling_matrix(i,j));
+
+  _amplitude_r += _amplitude_dr * dt;
+  _phase_theta += _phase_dtheta * dt;
+
+  for (int i=0; i<4; i++)
+    sin(_phase_theta(i)) > 0 ? _ground_multiplier(i) = _ground_clearance : _ground_multiplier(i) = _ground_penetration;
+
+  Eigen::Vector4d foot_x = -_d_step * (_amplitude_r.array() - Eigen::Vector4d::Ones().array()) * _phase_theta.array().cos();
+  Eigen::Vector4d foot_z = _ground_multiplier.array() * _phase_theta.array().sin();
+
+  _ik_msg.front_left_foot.x = foot_x(0);
+  _ik_msg.front_left_foot.z = foot_z(0);
+
+  _ik_msg.front_right_foot.x = foot_x(1);
+  _ik_msg.front_right_foot.z = foot_z(1);
+
+  _ik_msg.rear_left_foot.x = foot_x(2);
+  _ik_msg.rear_left_foot.z = foot_z(2);
+
+  _ik_msg.rear_right_foot.x = foot_x(3);
+  _ik_msg.rear_right_foot.z = foot_z(3);
   
-  float g1 = sine_fr > 0 ? _ground_clearance : _ground_penetration;
-  float g2 = sine_fl > 0 ? _ground_clearance : _ground_penetration;
-  float g3 = sine_rl > 0 ? _ground_clearance : _ground_penetration;
-  float g4 = sine_rr > 0 ? _ground_clearance : _ground_penetration;
-  
-  ik_msg.front_right_foot.z = g1 * sine_fr;
-  ik_msg.front_right_foot.x = _d_step * sine_fr;
+  _cmd_ik_publisher->publish(_ik_msg);
 
-  ik_msg.front_left_foot.z = g2 * sine_fl;
-  ik_msg.front_left_foot.x = _d_step * sine_fl;
-
-  ik_msg.rear_left_foot.z = g3 * sine_rl;
-  ik_msg.rear_left_foot.x = _d_step * sine_rl;
-
-  ik_msg.rear_right_foot.z = g4 * sine_rr;
-  ik_msg.rear_right_foot.x = _d_step * sine_rr;
-
-  _cmd_ik_publisher->publish(ik_msg);
+  _last_time = this->get_clock()->now();
 }
 
 
