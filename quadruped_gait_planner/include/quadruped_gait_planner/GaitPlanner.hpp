@@ -1,5 +1,6 @@
 #include "rclcpp/rclcpp.hpp"
 #include "quadruped_kinematics/msg/quadruped_ik.hpp"
+#include "quadruped_gait_planner/srv/gait_parameters.hpp"
 
 #include <Eigen/Geometry>
 #include <memory>
@@ -11,9 +12,14 @@ class GaitPlanner : public rclcpp::Node
     ~GaitPlanner();
 
   private:
+    void setGaitParameters(const std::shared_ptr<quadruped_gait_planner::srv::GaitParameters::Request> request,
+                                 std::shared_ptr<quadruped_gait_planner::srv::GaitParameters::Response> response);
     void publishIKCallback();
-    void setGaitType(std::string gait_type);
+
     void updateGaitParameters();
+    bool setGaitType(std::string gait_type);
+
+    rclcpp::Service<quadruped_gait_planner::srv::GaitParameters>::SharedPtr _gait_parameters_service;
 
     rclcpp::Publisher<quadruped_kinematics::msg::QuadrupedIK>::SharedPtr _cmd_ik_publisher;
 

@@ -1,7 +1,7 @@
 gait_planner_node:
   ros__parameters:
-    default_gait_type: "trot"
-    default_gait_parameters:
+    gait_type: "trot"
+    gait_parameters:
       coupling_weight: 1.0
       amplitude: 1.0
       frequency: 1.0 # Hz

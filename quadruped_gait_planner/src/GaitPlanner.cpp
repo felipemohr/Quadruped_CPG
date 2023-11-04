@@ -8,10 +8,14 @@
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
+using std::placeholders::_2;
 
 GaitPlanner::GaitPlanner() : Node("gait_planner_node")
 {
   RCLCPP_INFO(this->get_logger(), "Gait Planner node initialized");
+
+  _gait_parameters_service = this->create_service<quadruped_gait_planner::srv::GaitParameters>("set_gait_parameters", 
+                                   std::bind(&GaitPlanner::setGaitParameters, this, _1, _2));
 
   _cmd_ik_publisher = this->create_publisher<quadruped_kinematics::msg::QuadrupedIK>("cmd_ik", 10);
   _publish_ik_timer = this->create_wall_timer(10ms, std::bind(&GaitPlanner::publishIKCallback, this));
@@ -33,12 +37,10 @@ GaitPlanner::GaitPlanner() : Node("gait_planner_node")
     {"ground_penetration", 0.0025},
   };
   
-  this->declare_parameter("default_gait_type", "trot");
-  this->declare_parameters("default_gait_parameters", default_gait_parameters);
+  this->declare_parameter("gait_type", "trot");
+  this->declare_parameters("gait_parameters", default_gait_parameters);
 
-  this->get_parameter("default_gait_type", _gait_type);
-  this->get_parameters("default_gait_parameters", _gait_parameters);
-
+  this->get_parameter("gait_type", _gait_type);
   setGaitType(_gait_type);
   updateGaitParameters();
 
@@ -87,7 +89,24 @@ void GaitPlanner::publishIKCallback()
   _last_time = this->get_clock()->now();
 }
 
-void GaitPlanner::setGaitType(std::string gait_type)
+void GaitPlanner::setGaitParameters(const std::shared_ptr<quadruped_gait_planner::srv::GaitParameters::Request> request,
+                                          std::shared_ptr<quadruped_gait_planner::srv::GaitParameters::Response> response)
+{
+  this->set_parameters({rclcpp::Parameter("gait_type", request->gait_type),
+                        rclcpp::Parameter("coupling_weight", request->coupling_weight),
+                        rclcpp::Parameter("amplitude", request->amplitude),
+                        rclcpp::Parameter("frequency", request->frequency),
+                        rclcpp::Parameter("convergence_factor", request->convergence_factor),
+                        rclcpp::Parameter("max_d_step", request->max_d_step),
+                        rclcpp::Parameter("ground_clearance", request->ground_clearance),
+                        rclcpp::Parameter("ground_penetration", request->ground_penetration)
+                      });
+  response->success = this->setGaitType(request->gait_type);
+  if (response->success)
+    this->updateGaitParameters();
+}
+
+bool GaitPlanner::setGaitType(std::string gait_type)
 {
   if (gait_type == "trot")
   {
@@ -118,11 +137,17 @@ void GaitPlanner::setGaitType(std::string gait_type)
                         M_PI, M_PI, 0, 0;
   }
   else
+  {
     RCLCPP_WARN(this->get_logger(), "Impossible to set '%s' gait type. Ignoring...", gait_type.c_str());
+    return false;
+  }
+  return true;
 }
 
 void GaitPlanner::updateGaitParameters()
 {
+  this->get_parameters("gait_parameters", _gait_parameters);
+
   _coupling_weights.setConstant(_gait_parameters["coupling_weight"]);
   _amplitude_mu.setConstant(_gait_parameters["amplitude"]);
   _frequency_omega.setConstant(2 * M_PI * _gait_parameters["frequency"]);
