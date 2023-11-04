@@ -10,12 +10,23 @@ find_package(ament_cmake REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(quadruped_kinematics REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "srv/GaitParameters.srv"
+)
+
+ament_export_dependencies(rosidl_default_runtime)
 
 include_directories(include)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
 add_executable(gait_planner_node src/GaitPlanner.cpp)
 ament_target_dependencies(gait_planner_node rclcpp quadruped_kinematics Eigen3)
+
+rosidl_get_typesupport_target(cpp_typesupport_target "${PROJECT_NAME}" "rosidl_typesupport_cpp")
+
+target_link_libraries(gait_planner_node "${cpp_typesupport_target}")
 
 install(
   DIRECTORY launch config

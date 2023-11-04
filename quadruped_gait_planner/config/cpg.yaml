@@ -3,9 +3,9 @@ gait_planner_node:
     default_gait_type: "trot"
     default_gait_parameters:
       coupling_weight: 1.0
-      amplitude: 1.5
+      amplitude: 1.0
       frequency: 1.0 # Hz
       convergence_factor: 50.0
-      max_d_step: 0.15
+      max_d_step: 0.08
       ground_clearance: 0.035
       ground_penetration: 0.0025

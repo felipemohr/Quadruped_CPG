@@ -67,8 +67,7 @@ void GaitPlanner::publishIKCallback()
   for (int i=0; i<4; i++)
     sin(_phase_theta(i)) > 0 ? _ground_multiplier(i) = _ground_clearance : _ground_multiplier(i) = _ground_penetration;
 
-  // TODO: use u_max and u_min
-  Eigen::Vector4d foot_x = -_d_step * (_amplitude_r.array() - Eigen::Vector4d::Ones().array()) * _phase_theta.array().cos();
+  Eigen::Vector4d foot_x = -_d_step * _amplitude_r.array() * _phase_theta.array().cos();
   Eigen::Vector4d foot_z = _ground_multiplier.array() * _phase_theta.array().sin();
 
   _ik_msg.front_left_foot.x = foot_x(0);
@@ -93,23 +92,23 @@ void GaitPlanner::setGaitType(std::string gait_type)
   if (gait_type == "trot")
   {
     _coupling_matrix << 0, M_PI, M_PI, 0,
-                      -M_PI, 0, 0, -M_PI,
-                      -M_PI, 0, 0, -M_PI,
+                       -M_PI, 0, 0, -M_PI,
+                       -M_PI, 0, 0, -M_PI,
                         0, M_PI, M_PI, 0;
   }
   else if (gait_type == "walk")
   {
     _coupling_matrix << 0, M_PI, M_PI_2, 3*M_PI_2,
-                        -M_PI, 0, -M_PI_2, -3*M_PI_2,
-                        -M_PI_2, M_PI_2, 0, -M_PI,
-                        -3*M_PI_2, 3*M_PI_2, M_PI, 0;
+                       -M_PI, 0, -M_PI_2, -3*M_PI_2,
+                       -M_PI_2, M_PI_2, 0, -M_PI,
+                       -3*M_PI_2, 3*M_PI_2, M_PI, 0;
   }
   else if (gait_type == "pace")
   {
     _coupling_matrix << 0, M_PI, M_PI, M_PI,
-                        -M_PI, 0, -M_PI, 0,
+                       -M_PI, 0, -M_PI, 0,
                         0, M_PI, 0, M_PI,
-                        -M_PI, 0, -M_PI, 0;
+                       -M_PI, 0, -M_PI, 0;
   }
   else if (gait_type == "gallop")
   {
