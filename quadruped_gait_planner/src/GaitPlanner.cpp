@@ -34,12 +34,11 @@ GaitPlanner::GaitPlanner() : Node("gait_planner_node")
   };
   
   this->declare_parameter("default_gait_type", "trot");
-  this->declare_parameters("trot_gait", default_gait_parameters);
-  this->declare_parameters("walk_gait", default_gait_parameters);
-  this->declare_parameters("pace_gait", default_gait_parameters);
-  this->declare_parameters("gallop_gait", default_gait_parameters);
+  this->declare_parameters("default_gait_parameters", default_gait_parameters);
 
   this->get_parameter("default_gait_type", _gait_type);
+  this->get_parameters("default_gait_parameters", _gait_parameters);
+
   setGaitType(_gait_type);
   updateGaitParameters();
 
@@ -93,7 +92,6 @@ void GaitPlanner::setGaitType(std::string gait_type)
 {
   if (gait_type == "trot")
   {
-    this->get_parameters("trot_gait", _gait_parameters);
     _coupling_matrix << 0, M_PI, M_PI, 0,
                       -M_PI, 0, 0, -M_PI,
                       -M_PI, 0, 0, -M_PI,
@@ -101,7 +99,6 @@ void GaitPlanner::setGaitType(std::string gait_type)
   }
   else if (gait_type == "walk")
   {
-    this->get_parameters("walk_gait", _gait_parameters);
     _coupling_matrix << 0, M_PI, M_PI_2, 3*M_PI_2,
                         -M_PI, 0, -M_PI_2, -3*M_PI_2,
                         -M_PI_2, M_PI_2, 0, -M_PI,
@@ -109,7 +106,6 @@ void GaitPlanner::setGaitType(std::string gait_type)
   }
   else if (gait_type == "pace")
   {
-    this->get_parameters("pace_gait", _gait_parameters);
     _coupling_matrix << 0, M_PI, M_PI, M_PI,
                         -M_PI, 0, -M_PI, 0,
                         0, M_PI, 0, M_PI,
@@ -117,7 +113,6 @@ void GaitPlanner::setGaitType(std::string gait_type)
   }
   else if (gait_type == "gallop")
   {
-    this->get_parameters("gallop_gait", _gait_parameters);
     _coupling_matrix << 0, 0, -M_PI, -M_PI,
                         0, 0, -M_PI, -M_PI,
                         M_PI, M_PI, 0, 0,
