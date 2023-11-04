@@ -14,11 +14,16 @@ find_package(quadruped_kinematics REQUIRED)
 include_directories(include)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
-add_executable(gait_planner src/GaitPlanner.cpp)
-ament_target_dependencies(gait_planner rclcpp quadruped_kinematics Eigen3)
+add_executable(gait_planner_node src/GaitPlanner.cpp)
+ament_target_dependencies(gait_planner_node rclcpp quadruped_kinematics Eigen3)
+
+install(
+  DIRECTORY launch config
+  DESTINATION share/${PROJECT_NAME}
+)
 
 install(TARGETS
-  gait_planner
+  gait_planner_node
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)

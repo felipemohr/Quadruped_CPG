@@ -12,6 +12,8 @@ class GaitPlanner : public rclcpp::Node
 
   private:
     void publishIKCallback();
+    void setGaitType(std::string gait_type);
+    void updateGaitParameters();
 
     rclcpp::Publisher<quadruped_kinematics::msg::QuadrupedIK>::SharedPtr _cmd_ik_publisher;
 
@@ -37,8 +39,12 @@ class GaitPlanner : public rclcpp::Node
 
     Eigen::Vector4d _ground_multiplier;
 
-    float _d_step = 0.15;
-    float _ground_clearance = 0.035;
-    float _ground_penetration = 0.0025;
+    std::map<std::string, double> _gait_parameters;
+
+    std::string _gait_type;
+
+    float _d_step;
+    float _ground_clearance;
+    float _ground_penetration;
 
 };

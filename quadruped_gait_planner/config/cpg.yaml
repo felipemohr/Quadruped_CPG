@@ -1,0 +1,36 @@
+gait_planner_node:
+  ros__parameters:
+    default_gait_type: "trot"
+    trot_gait:
+      coupling_weight: 1.0
+      amplitude: 1.5
+      frequency: 1.0 # Hz
+      convergence_factor: 50.0
+      max_d_step: 0.15
+      ground_clearance: 0.035
+      ground_penetration: 0.0025
+    walk_gait:
+      coupling_weight: 1.0
+      amplitude: 1.5
+      frequency: 1.0 # Hz
+      convergence_factor: 50.0
+      max_d_step: 0.15
+      ground_clearance: 0.035
+      ground_penetration: 0.0025
+    pace_gait:
+      coupling_weight: 1.0
+      amplitude: 1.5
+      frequency: 1.0 # Hz
+      convergence_factor: 50.0
+      max_d_step: 0.15
+      ground_clearance: 0.035
+      ground_penetration: 0.0025
+    gallop_gait:
+      coupling_weight: 1.0
+      amplitude: 1.5
+      frequency: 1.0 # Hz
+      convergence_factor: 50.0
+      max_d_step: 0.15
+      ground_clearance: 0.035
+      ground_penetration: 0.0025
+    

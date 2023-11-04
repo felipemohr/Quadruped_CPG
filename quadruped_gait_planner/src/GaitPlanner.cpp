@@ -18,40 +18,30 @@ GaitPlanner::GaitPlanner() : Node("gait_planner_node")
 
   _last_time = this->get_clock()->now();
 
-  // Trot gait
-  _coupling_matrix << 0, M_PI, M_PI, 0,
-                     -M_PI, 0, 0, -M_PI,
-                     -M_PI, 0, 0, -M_PI,
-                      0, M_PI, M_PI, 0;
-
-  // // Walk gait
-  // _coupling_matrix << 0, M_PI, M_PI_2, 3*M_PI_2,
-  //                     -M_PI, 0, -M_PI_2, -3*M_PI_2,
-  //                     -M_PI_2, M_PI_2, 0, -M_PI,
-  //                     -3*M_PI_2, 3*M_PI_2, M_PI, 0;
-
-  // // Pace gait
-  // _coupling_matrix << 0, M_PI, M_PI, M_PI,
-  //                     -M_PI, 0, -M_PI, 0,
-  //                     0, M_PI, 0, M_PI,
-  //                     -M_PI, 0, -M_PI, 0;
-
-  // // Gallop gait
-  // _coupling_matrix << 0, 0, -M_PI, -M_PI,
-  //                     0, 0, -M_PI, -M_PI,
-  //                     M_PI, M_PI, 0, 0,
-  //                     M_PI, M_PI, 0, 0;
-
   _amplitude_r = Eigen::Vector4d::Random();
   _phase_theta = Eigen::Vector4d::Random();
 
-  _coupling_weights.setOnes();
+  _ik_msg.use_feet_transforms = true;  
 
-  _amplitude_mu.setConstant(1.5);
-  _frequency_omega.setConstant(1.0 * 2 * M_PI);
-  _convergence_factor_a.setConstant(50.0);
+  std::map<std::string, double> default_gait_parameters = { 
+    {"coupling_weight", 1.0},
+    {"amplitude", 1.5},
+    {"frequency", 1.0},
+    {"convergence_factor", 50.0},
+    {"max_d_step", 0.20},
+    {"ground_clearance", 0.035},
+    {"ground_penetration", 0.0025},
+  };
+  
+  this->declare_parameter("default_gait_type", "trot");
+  this->declare_parameters("trot_gait", default_gait_parameters);
+  this->declare_parameters("walk_gait", default_gait_parameters);
+  this->declare_parameters("pace_gait", default_gait_parameters);
+  this->declare_parameters("gallop_gait", default_gait_parameters);
 
-  _ik_msg.use_feet_transforms = true;
+  this->get_parameter("default_gait_type", _gait_type);
+  setGaitType(_gait_type);
+  updateGaitParameters();
 
 }
 
@@ -78,6 +68,7 @@ void GaitPlanner::publishIKCallback()
   for (int i=0; i<4; i++)
     sin(_phase_theta(i)) > 0 ? _ground_multiplier(i) = _ground_clearance : _ground_multiplier(i) = _ground_penetration;
 
+  // TODO: use u_max and u_min
   Eigen::Vector4d foot_x = -_d_step * (_amplitude_r.array() - Eigen::Vector4d::Ones().array()) * _phase_theta.array().cos();
   Eigen::Vector4d foot_z = _ground_multiplier.array() * _phase_theta.array().sin();
 
@@ -98,6 +89,54 @@ void GaitPlanner::publishIKCallback()
   _last_time = this->get_clock()->now();
 }
 
+void GaitPlanner::setGaitType(std::string gait_type)
+{
+  if (gait_type == "trot")
+  {
+    this->get_parameters("trot_gait", _gait_parameters);
+    _coupling_matrix << 0, M_PI, M_PI, 0,
+                      -M_PI, 0, 0, -M_PI,
+                      -M_PI, 0, 0, -M_PI,
+                        0, M_PI, M_PI, 0;
+  }
+  else if (gait_type == "walk")
+  {
+    this->get_parameters("walk_gait", _gait_parameters);
+    _coupling_matrix << 0, M_PI, M_PI_2, 3*M_PI_2,
+                        -M_PI, 0, -M_PI_2, -3*M_PI_2,
+                        -M_PI_2, M_PI_2, 0, -M_PI,
+                        -3*M_PI_2, 3*M_PI_2, M_PI, 0;
+  }
+  else if (gait_type == "pace")
+  {
+    this->get_parameters("pace_gait", _gait_parameters);
+    _coupling_matrix << 0, M_PI, M_PI, M_PI,
+                        -M_PI, 0, -M_PI, 0,
+                        0, M_PI, 0, M_PI,
+                        -M_PI, 0, -M_PI, 0;
+  }
+  else if (gait_type == "gallop")
+  {
+    this->get_parameters("gallop_gait", _gait_parameters);
+    _coupling_matrix << 0, 0, -M_PI, -M_PI,
+                        0, 0, -M_PI, -M_PI,
+                        M_PI, M_PI, 0, 0,
+                        M_PI, M_PI, 0, 0;
+  }
+  else
+    RCLCPP_WARN(this->get_logger(), "Impossible to set '%s' gait type. Ignoring...", gait_type.c_str());
+}
+
+void GaitPlanner::updateGaitParameters()
+{
+  _coupling_weights.setConstant(_gait_parameters["coupling_weight"]);
+  _amplitude_mu.setConstant(_gait_parameters["amplitude"]);
+  _frequency_omega.setConstant(2 * M_PI * _gait_parameters["frequency"]);
+  _convergence_factor_a.setConstant(_gait_parameters["convergence_factor"]);
+  _d_step = _gait_parameters["max_d_step"];
+  _ground_clearance = _gait_parameters["ground_clearance"];
+  _ground_penetration = _gait_parameters["ground_penetration"];
+}
 
 int main(int argc, char **argv)
 {
