@@ -1,0 +1,10 @@
+string gait_type
+float64 coupling_weight
+float64 amplitude
+float64 swing_frequency
+float64 stance_frequency
+float64 convergence_factor
+float64 ground_clearance
+float64 ground_penetration
+---
+bool success

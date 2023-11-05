@@ -1,0 +1,11 @@
+gait_planner_node:
+  ros__parameters:
+    gait_type: "trot"
+    gait_parameters:
+      coupling_weight: 1.0
+      amplitude: 1.0
+      swing_frequency: 2.5 # Hz
+      stance_frequency: 1.5 # Hz
+      convergence_factor: 50.0
+      ground_clearance: 0.05
+      ground_penetration: 0.005
