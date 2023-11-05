@@ -20,6 +20,8 @@ GaitPlanner::GaitPlanner() : Node("gait_planner_node")
   _cmd_ik_publisher = this->create_publisher<quadruped_kinematics::msg::QuadrupedIK>("cmd_ik", 10);
   _publish_ik_timer = this->create_wall_timer(10ms, std::bind(&GaitPlanner::publishIKCallback, this));
 
+  _cmd_vel_subscriber = this->create_subscription<geometry_msgs::msg::Twist>("cmd_vel", 10, std::bind(&GaitPlanner::cmdVelCallback, this, _1));
+
   _last_time = this->get_clock()->now();
 
   _amplitude_r = Eigen::Vector4d::Random();
@@ -31,9 +33,9 @@ GaitPlanner::GaitPlanner() : Node("gait_planner_node")
     {"coupling_weight", 1.0},
     {"amplitude", 1.0},
     {"swing_frequency", 2.5},
-    {"stance_frequency", 1.0},
+    {"stance_frequency", 1.5},
     {"convergence_factor", 50.0},
-    {"max_d_step", 0.10},
+    {"max_d_step", 0.125},
     {"ground_clearance", 0.05},
     {"ground_penetration", 0.005},
   };
@@ -95,6 +97,12 @@ void GaitPlanner::publishIKCallback()
 
   _last_time = this->get_clock()->now();
 }
+
+void GaitPlanner::cmdVelCallback(const geometry_msgs::msg::Twist::SharedPtr msg)
+{
+  _d_step = msg->linear.x * (1.0/_gait_parameters["stance_frequency"]) / 4.0;
+}
+
 
 void GaitPlanner::setGaitParameters(const std::shared_ptr<quadruped_gait_planner::srv::GaitParameters::Request> request,
                                           std::shared_ptr<quadruped_gait_planner::srv::GaitParameters::Response> response)
