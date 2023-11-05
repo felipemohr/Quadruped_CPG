@@ -35,7 +35,6 @@ GaitPlanner::GaitPlanner() : Node("gait_planner_node")
     {"swing_frequency", 2.5},
     {"stance_frequency", 1.5},
     {"convergence_factor", 50.0},
-    {"max_d_step", 0.125},
     {"ground_clearance", 0.05},
     {"ground_penetration", 0.005},
   };
@@ -78,19 +77,24 @@ void GaitPlanner::publishIKCallback()
     sin(_phase_theta(i)) > 0 ? _ground_multiplier(i) = _ground_clearance : _ground_multiplier(i) = _ground_penetration;
   }
 
-  Eigen::Vector4d foot_x = -_d_step * _amplitude_r.array() * _phase_theta.array().cos();
+  Eigen::Vector4d foot_x = -_d_step_x.array() * _amplitude_r.array() * _phase_theta.array().cos();
+  Eigen::Vector4d foot_y = -_d_step_y.array() * _amplitude_r.array() * _phase_theta.array().cos();
   Eigen::Vector4d foot_z = _ground_multiplier.array() * _phase_theta.array().sin();
 
   _ik_msg.front_left_foot.x = foot_x(0);
+  _ik_msg.front_left_foot.y = foot_y(0);
   _ik_msg.front_left_foot.z = foot_z(0);
 
   _ik_msg.front_right_foot.x = foot_x(1);
+  _ik_msg.front_right_foot.y = foot_y(1);
   _ik_msg.front_right_foot.z = foot_z(1);
 
   _ik_msg.rear_left_foot.x = foot_x(2);
+  _ik_msg.rear_left_foot.y = foot_y(2);
   _ik_msg.rear_left_foot.z = foot_z(2);
 
   _ik_msg.rear_right_foot.x = foot_x(3);
+  _ik_msg.rear_right_foot.y = foot_y(3);
   _ik_msg.rear_right_foot.z = foot_z(3);
   
   _cmd_ik_publisher->publish(_ik_msg);
@@ -100,9 +104,24 @@ void GaitPlanner::publishIKCallback()
 
 void GaitPlanner::cmdVelCallback(const geometry_msgs::msg::Twist::SharedPtr msg)
 {
-  _d_step = msg->linear.x * (1.0/_gait_parameters["stance_frequency"]) / 4.0;
-}
+  _d_step_x.setConstant(msg->linear.x * (1.0/_gait_parameters["stance_frequency"]) / 4.0);
+  _d_step_y.setConstant(msg->linear.y * (1.0/_gait_parameters["stance_frequency"]) / 4.0);
 
+  float delta_angular = 0.188 * msg->angular.z * (1.0/_gait_parameters["stance_frequency"]) / 4.0;
+  
+  _d_step_x(0) -= delta_angular;
+  _d_step_y(0) += delta_angular;
+
+  _d_step_x(1) += delta_angular;
+  _d_step_y(1) += delta_angular;
+  
+  _d_step_x(2) -= delta_angular;
+  _d_step_y(2) -= delta_angular;
+  
+  _d_step_x(3) += delta_angular;
+  _d_step_y(3) -= delta_angular;
+
+}
 
 void GaitPlanner::setGaitParameters(const std::shared_ptr<quadruped_gait_planner::srv::GaitParameters::Request> request,
                                           std::shared_ptr<quadruped_gait_planner::srv::GaitParameters::Response> response)
@@ -113,7 +132,6 @@ void GaitPlanner::setGaitParameters(const std::shared_ptr<quadruped_gait_planner
                         rclcpp::Parameter("swing_frequency", request->swing_frequency),
                         rclcpp::Parameter("stance_frequency", request->stance_frequency),
                         rclcpp::Parameter("convergence_factor", request->convergence_factor),
-                        rclcpp::Parameter("max_d_step", request->max_d_step),
                         rclcpp::Parameter("ground_clearance", request->ground_clearance),
                         rclcpp::Parameter("ground_penetration", request->ground_penetration)
                       });
@@ -168,7 +186,6 @@ void GaitPlanner::updateGaitParameters()
   _amplitude_mu.setConstant(_gait_parameters["amplitude"]);
   _frequency_omega.setConstant(2*M_PI * _gait_parameters["stance_frequency"]);
   _convergence_factor_a.setConstant(_gait_parameters["convergence_factor"]);
-  _d_step = _gait_parameters["max_d_step"];
   _ground_clearance = _gait_parameters["ground_clearance"];
   _ground_penetration = _gait_parameters["ground_penetration"];
 }

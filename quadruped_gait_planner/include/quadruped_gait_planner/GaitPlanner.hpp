@@ -53,7 +53,8 @@ class GaitPlanner : public rclcpp::Node
 
     std::string _gait_type;
 
-    float _d_step;
+    Eigen::Vector4d _d_step_x;
+    Eigen::Vector4d _d_step_y;
     float _ground_clearance;
     float _ground_penetration;
 

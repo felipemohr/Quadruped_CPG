@@ -7,6 +7,5 @@ gait_planner_node:
       swing_frequency: 2.5 # Hz
       stance_frequency: 1.5 # Hz
       convergence_factor: 50.0
-      max_d_step: 0.125
       ground_clearance: 0.05
       ground_penetration: 0.005
