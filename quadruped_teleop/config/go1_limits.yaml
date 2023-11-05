@@ -7,3 +7,7 @@ joy_teleop_node:
       roll: 0.75
       pitch: 0.45
       yaw: 0.75
+    vel_limits:
+      linear_x: 0.5
+      linear_y: 0.25
+      angular_z: 1.57
