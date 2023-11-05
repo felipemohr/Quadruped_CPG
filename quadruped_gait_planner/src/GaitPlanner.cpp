@@ -29,12 +29,13 @@ GaitPlanner::GaitPlanner() : Node("gait_planner_node")
 
   std::map<std::string, double> default_gait_parameters = { 
     {"coupling_weight", 1.0},
-    {"amplitude", 1.5},
-    {"frequency", 1.0},
+    {"amplitude", 1.0},
+    {"swing_frequency", 2.5},
+    {"stance_frequency", 1.0},
     {"convergence_factor", 50.0},
-    {"max_d_step", 0.20},
-    {"ground_clearance", 0.035},
-    {"ground_penetration", 0.0025},
+    {"max_d_step", 0.10},
+    {"ground_clearance", 0.05},
+    {"ground_penetration", 0.005},
   };
   
   this->declare_parameter("gait_type", "trot");
@@ -58,16 +59,22 @@ void GaitPlanner::publishIKCallback()
   _amplitude_d2r = _convergence_factor_a.array() * (_convergence_factor_a.array() / 4.0 * (_amplitude_mu.array() - _amplitude_r.array()) - _amplitude_dr.array());
   _amplitude_dr += _amplitude_d2r * dt;
 
-  _phase_dtheta = _frequency_omega;
   for (int i=0; i<4; i++)
     for (int j=0; j<4; j++)
-        _phase_dtheta(i) += _amplitude_r(j) * _coupling_weights(i,j) * sin(_phase_theta(j) - _phase_theta(i) - _coupling_matrix(i,j));
+    {
+      _phase_theta(i) < M_PI ? _frequency_omega(i) = 2*M_PI * _gait_parameters["swing_frequency"] : _frequency_omega(i) = 2*M_PI * _gait_parameters["stance_frequency"];
+      _phase_dtheta(i) = _frequency_omega(i);
+      _phase_dtheta(i) += _amplitude_r(j) * _coupling_weights(i,j) * sin(_phase_theta(j) - _phase_theta(i) - _coupling_matrix(i,j));
+    }
 
   _amplitude_r += _amplitude_dr * dt;
   _phase_theta += _phase_dtheta * dt;
 
   for (int i=0; i<4; i++)
+  {
+    _phase_theta(i) = std::fmod(_phase_theta(i), 2*M_PI);
     sin(_phase_theta(i)) > 0 ? _ground_multiplier(i) = _ground_clearance : _ground_multiplier(i) = _ground_penetration;
+  }
 
   Eigen::Vector4d foot_x = -_d_step * _amplitude_r.array() * _phase_theta.array().cos();
   Eigen::Vector4d foot_z = _ground_multiplier.array() * _phase_theta.array().sin();
@@ -95,7 +102,8 @@ void GaitPlanner::setGaitParameters(const std::shared_ptr<quadruped_gait_planner
   this->set_parameters({rclcpp::Parameter("gait_type", request->gait_type),
                         rclcpp::Parameter("coupling_weight", request->coupling_weight),
                         rclcpp::Parameter("amplitude", request->amplitude),
-                        rclcpp::Parameter("frequency", request->frequency),
+                        rclcpp::Parameter("swing_frequency", request->swing_frequency),
+                        rclcpp::Parameter("stance_frequency", request->stance_frequency),
                         rclcpp::Parameter("convergence_factor", request->convergence_factor),
                         rclcpp::Parameter("max_d_step", request->max_d_step),
                         rclcpp::Parameter("ground_clearance", request->ground_clearance),
@@ -150,7 +158,7 @@ void GaitPlanner::updateGaitParameters()
 
   _coupling_weights.setConstant(_gait_parameters["coupling_weight"]);
   _amplitude_mu.setConstant(_gait_parameters["amplitude"]);
-  _frequency_omega.setConstant(2 * M_PI * _gait_parameters["frequency"]);
+  _frequency_omega.setConstant(2*M_PI * _gait_parameters["stance_frequency"]);
   _convergence_factor_a.setConstant(_gait_parameters["convergence_factor"]);
   _d_step = _gait_parameters["max_d_step"];
   _ground_clearance = _gait_parameters["ground_clearance"];

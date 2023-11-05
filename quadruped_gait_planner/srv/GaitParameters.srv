@@ -1,7 +1,8 @@
 string gait_type
 float64 coupling_weight
 float64 amplitude
-float64 frequency
+float64 swing_frequency
+float64 stance_frequency
 float64 convergence_factor
 float64 max_d_step
 float64 ground_clearance

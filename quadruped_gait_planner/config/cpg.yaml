@@ -4,8 +4,9 @@ gait_planner_node:
     gait_parameters:
       coupling_weight: 1.0
       amplitude: 1.0
-      frequency: 1.0 # Hz
+      swing_frequency: 2.5 # Hz
+      stance_frequency: 1.0 # Hz
       convergence_factor: 50.0
-      max_d_step: 0.08
-      ground_clearance: 0.035
-      ground_penetration: 0.0025
+      max_d_step: 0.10
+      ground_clearance: 0.05
+      ground_penetration: 0.005
