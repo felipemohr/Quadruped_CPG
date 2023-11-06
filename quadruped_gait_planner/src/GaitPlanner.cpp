@@ -14,6 +14,10 @@ GaitPlanner::GaitPlanner() : Node("gait_planner_node")
 {
   RCLCPP_INFO(this->get_logger(), "Gait Planner node initialized");
 
+  _enable_gait_planner_service = this->create_service<std_srvs::srv::Empty>("enable_gait_planner",
+                                       std::bind(&GaitPlanner::enableGaitPlanner, this, _1, _2));
+  _disable_gait_planner_service = this->create_service<std_srvs::srv::Empty>("disable_gait_planner",
+                                        std::bind(&GaitPlanner::disableGaitPlanner, this, _1, _2));
   _gait_parameters_service = this->create_service<quadruped_gait_planner::srv::GaitParameters>("set_gait_parameters", 
                                    std::bind(&GaitPlanner::setGaitParameters, this, _1, _2));
 
@@ -50,7 +54,6 @@ GaitPlanner::GaitPlanner() : Node("gait_planner_node")
 
 GaitPlanner::~GaitPlanner()
 {
-  
 }
 
 void GaitPlanner::publishIKCallback()
@@ -61,12 +64,14 @@ void GaitPlanner::publishIKCallback()
   _amplitude_dr += _amplitude_d2r * dt;
 
   for (int i=0; i<4; i++)
+  {
     for (int j=0; j<4; j++)
     {
       _phase_theta(i) < M_PI ? _frequency_omega(i) = 2*M_PI * _gait_parameters["swing_frequency"] : _frequency_omega(i) = 2*M_PI * _gait_parameters["stance_frequency"];
       _phase_dtheta(i) = _frequency_omega(i);
       _phase_dtheta(i) += _amplitude_r(j) * _coupling_weights(i,j) * sin(_phase_theta(j) - _phase_theta(i) - _coupling_matrix(i,j));
     }
+  }
 
   _amplitude_r += _amplitude_dr * dt;
   _phase_theta += _phase_dtheta * dt;
@@ -121,6 +126,24 @@ void GaitPlanner::cmdVelCallback(const geometry_msgs::msg::Twist::SharedPtr msg)
   _d_step_x(3) += delta_angular;
   _d_step_y(3) -= delta_angular;
 
+}
+
+void GaitPlanner::enableGaitPlanner(const std_srvs::srv::Empty::Request::SharedPtr request,
+                                          std_srvs::srv::Empty::Response::SharedPtr response)
+{
+  (void) request;
+  (void) response;
+  _publish_ik_timer->reset();
+  RCLCPP_INFO(this->get_logger(), "Gait planner enabled");
+}
+
+void GaitPlanner::disableGaitPlanner(const std_srvs::srv::Empty::Request::SharedPtr request,
+                                           std_srvs::srv::Empty::Response::SharedPtr response)
+{
+  (void) request;
+  (void) response;
+  _publish_ik_timer->cancel();
+  RCLCPP_INFO(this->get_logger(), "Gait planner disabled");
 }
 
 void GaitPlanner::setGaitParameters(const std::shared_ptr<quadruped_gait_planner::srv::GaitParameters::Request> request,

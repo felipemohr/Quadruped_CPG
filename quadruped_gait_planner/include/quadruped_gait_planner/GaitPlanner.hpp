@@ -2,6 +2,7 @@
 #include "quadruped_kinematics/msg/quadruped_ik.hpp"
 #include "quadruped_gait_planner/srv/gait_parameters.hpp"
 #include "geometry_msgs/msg/twist.hpp"
+#include "std_srvs/srv/empty.hpp"
 
 #include <Eigen/Geometry>
 #include <memory>
@@ -13,8 +14,12 @@ class GaitPlanner : public rclcpp::Node
     ~GaitPlanner();
 
   private:
-    void setGaitParameters(const std::shared_ptr<quadruped_gait_planner::srv::GaitParameters::Request> request,
-                                 std::shared_ptr<quadruped_gait_planner::srv::GaitParameters::Response> response);
+    void enableGaitPlanner(const std_srvs::srv::Empty::Request::SharedPtr request,
+                                 std_srvs::srv::Empty::Response::SharedPtr response);
+    void disableGaitPlanner(const std_srvs::srv::Empty::Request::SharedPtr request,
+                                  std_srvs::srv::Empty::Response::SharedPtr response);
+    void setGaitParameters(const quadruped_gait_planner::srv::GaitParameters::Request::SharedPtr request,
+                                 quadruped_gait_planner::srv::GaitParameters::Response::SharedPtr response);
     
     void publishIKCallback();
     void cmdVelCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
@@ -22,6 +27,8 @@ class GaitPlanner : public rclcpp::Node
     void updateGaitParameters();
     bool setGaitType(std::string gait_type);
 
+    rclcpp::Service<std_srvs::srv::Empty>::SharedPtr _enable_gait_planner_service;
+    rclcpp::Service<std_srvs::srv::Empty>::SharedPtr _disable_gait_planner_service;
     rclcpp::Service<quadruped_gait_planner::srv::GaitParameters>::SharedPtr _gait_parameters_service;
 
     rclcpp::Publisher<quadruped_kinematics::msg::QuadrupedIK>::SharedPtr _cmd_ik_publisher;

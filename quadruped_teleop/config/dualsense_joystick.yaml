@@ -1,6 +1,7 @@
 joy_teleop_node:
   ros__parameters:
     filter_beta: 0.90
+    change_state: 0
     axis_linear:
       x: 1
       y: 0
