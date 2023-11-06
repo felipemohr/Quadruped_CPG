@@ -16,7 +16,8 @@
   <exec_depend>rosidl_default_runtime</exec_depend>
 
   <depend>rclcpp</depend>
-  <depend>quadruped_kinematics</depend>
+  <depend>geometry_msgs</depend>
+  <depend>std_srvs</depend>
 
   <member_of_group>rosidl_interface_packages</member_of_group>
 
