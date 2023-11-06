@@ -2,6 +2,7 @@
 #define JOY_TELEOP_HPP
 
 #include "rclcpp/rclcpp.hpp"
+#include "std_srvs/srv/empty.hpp"
 #include "sensor_msgs/msg/joy.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "quadruped_kinematics/msg/quadruped_ik.hpp"
@@ -28,6 +29,12 @@ class JoyTeleop : public rclcpp::Node
 
     void readVelMsg(const sensor_msgs::msg::Joy::SharedPtr msg);
     void readIKMsg(const sensor_msgs::msg::Joy::SharedPtr msg);
+
+    rclcpp::CallbackGroup::SharedPtr _callback_group;
+    rclcpp::SubscriptionOptions _sub_options;
+    
+    rclcpp::Client<std_srvs::srv::Empty>::SharedPtr _enable_gait_planner_client;
+    rclcpp::Client<std_srvs::srv::Empty>::SharedPtr _disable_gait_planner_client;
 
     rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr _joy_subscriber;
 

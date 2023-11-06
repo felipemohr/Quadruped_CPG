@@ -134,6 +134,7 @@ void GaitPlanner::enableGaitPlanner(const std_srvs::srv::Empty::Request::SharedP
   (void) request;
   (void) response;
   _publish_ik_timer->reset();
+  RCLCPP_INFO(this->get_logger(), "Gait planner enabled");
 }
 
 void GaitPlanner::disableGaitPlanner(const std_srvs::srv::Empty::Request::SharedPtr request,
@@ -142,6 +143,7 @@ void GaitPlanner::disableGaitPlanner(const std_srvs::srv::Empty::Request::Shared
   (void) request;
   (void) response;
   _publish_ik_timer->cancel();
+  RCLCPP_INFO(this->get_logger(), "Gait planner disabled");
 }
 
 void GaitPlanner::setGaitParameters(const std::shared_ptr<quadruped_gait_planner::srv::GaitParameters::Request> request,

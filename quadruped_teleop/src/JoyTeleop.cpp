@@ -13,8 +13,18 @@ JoyTeleop::JoyTeleop() : Node("joy_teleop_node")
 {
   RCLCPP_INFO(this->get_logger(), "Joy Teleop Node initialized");
 
+  _callback_group = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+  _sub_options.callback_group = _callback_group;
+
   _joy_subscriber = this->create_subscription<sensor_msgs::msg::Joy>("joy", 10,
-                            std::bind(&JoyTeleop::joyCallback, this, _1));
+                            std::bind(&JoyTeleop::joyCallback, this, _1), _sub_options);
+
+  _enable_gait_planner_client = this->create_client<std_srvs::srv::Empty>("enable_gait_planner",
+                                                                           rmw_qos_profile_services_default,
+                                                                           _callback_group);
+  _disable_gait_planner_client = this->create_client<std_srvs::srv::Empty>("disable_gait_planner",
+                                                                           rmw_qos_profile_services_default,
+                                                                           _callback_group);
 
   _cmd_vel_publisher = this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
   _cmd_ik_publisher = this->create_publisher<quadruped_kinematics::msg::QuadrupedIK>("cmd_ik", 10);
@@ -58,6 +68,25 @@ JoyTeleop::JoyTeleop() : Node("joy_teleop_node")
   _last_state = TeleopState::WALKING;
   _state = TeleopState::WALKING;
 
+  while (!_enable_gait_planner_client->wait_for_service(1s))
+  {
+    if (!rclcpp::ok())
+    {
+      RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the enable_gait_planner service. Exiting.");
+    }
+    RCLCPP_INFO(this->get_logger(), "enable_gait_planner service not available, waiting again...");
+  }
+
+  while (!_disable_gait_planner_client->wait_for_service(1s))
+  {
+    if (!rclcpp::ok())
+    {
+      RCLCPP_ERROR(this->get_logger(), "Interrupted while waiting for the disable_gait_planner service. Exiting.");
+    }
+    RCLCPP_INFO(this->get_logger(), "disable_gait_planner service not available, waiting again...");
+  }
+
+  _publish_ik_timer->cancel();
   RCLCPP_INFO(this->get_logger(), "Initialized in 'WALKING' state");
 }
 
@@ -91,17 +120,33 @@ void JoyTeleop::joyCallback(const sensor_msgs::msg::Joy::SharedPtr msg)
   {
     if (_state == TeleopState::WALKING)
     {
-      RCLCPP_INFO(this->get_logger(), "State changed to 'MOVING BODY'");
-      _state = TeleopState::MOVING_BODY;
-      _publish_vel_timer->cancel();
-      _publish_ik_timer->reset();
+      auto result = _disable_gait_planner_client->async_send_request(std::make_shared<std_srvs::srv::Empty::Request>());
+      std::future_status status = result.wait_for(5ms);
+
+      if (status == std::future_status::ready)
+      {
+        RCLCPP_INFO(this->get_logger(), "State changed to 'MOVING BODY'");
+        _state = TeleopState::MOVING_BODY;
+        _publish_vel_timer->cancel();
+        _publish_ik_timer->reset();
+      }
+      else
+        RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 3000, "Failed to change teleop state, timeout");
     }
     else
     {
-      RCLCPP_INFO(this->get_logger(), "State changed to 'WALKING'");
-      _state = TeleopState::WALKING;
-      _publish_ik_timer->cancel();
-      _publish_vel_timer->reset();
+      auto result = _enable_gait_planner_client->async_send_request(std::make_shared<std_srvs::srv::Empty::Request>());
+      std::future_status status = result.wait_for(5ms);
+
+      if (status == std::future_status::ready)
+      {
+        RCLCPP_INFO(this->get_logger(), "State changed to 'WALKING'");
+        _state = TeleopState::WALKING;
+        _publish_ik_timer->cancel();
+        _publish_vel_timer->reset();
+      }
+      else
+        RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 3000, "Failed to change teleop state, timeout");
     }
   }
   else
@@ -132,8 +177,10 @@ void JoyTeleop::publishVelCallback()
 int main(int argc, char **argv)
 {
   rclcpp::init(argc, argv);
+  rclcpp::executors::MultiThreadedExecutor executor;
   auto node = std::make_shared<JoyTeleop>();
-  rclcpp::spin(node);
+  executor.add_node(node);
+  executor.spin();
   rclcpp::shutdown();
   return 0;
 }

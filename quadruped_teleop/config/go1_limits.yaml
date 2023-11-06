@@ -9,5 +9,5 @@ joy_teleop_node:
       yaw: 0.75
     vel_limits:
       linear_x: 0.5
-      linear_y: 0.25
+      linear_y: 0.3
       angular_z: 1.57
