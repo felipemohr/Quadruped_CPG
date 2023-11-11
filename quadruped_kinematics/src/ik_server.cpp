@@ -27,7 +27,7 @@ Eigen::Matrix4d getTransformationMatrix(const geometry_msgs::msg::Vector3 transl
                                         const geometry_msgs::msg::Vector3 rotation)
 {
   Eigen::Vector3d translation_eigen;
-  tf2:: fromMsg(translation, translation_eigen);
+  tf2::fromMsg(translation, translation_eigen);
 
   Eigen::AngleAxisd rollRotation(rotation.x, Eigen::Vector3d::UnitX());
   Eigen::AngleAxisd pitchRotation(rotation.y, Eigen::Vector3d::UnitY());
@@ -106,6 +106,7 @@ quadruped_kinematics::msg::LegJoints computeLegIK(quadruped_kinematics::srv::Leg
   Eigen::Vector3d foot_point;
   tf2::fromMsg(request.foot_point, foot_point);
 
+  // TODO: fix left if not use_foot_transform
   bool left;
 
   if (request.use_foot_transform)
