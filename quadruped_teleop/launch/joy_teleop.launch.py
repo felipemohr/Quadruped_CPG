@@ -8,12 +8,12 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
 
-    quadruped_teleop_pkg_share = FindPackageShare('quadruped_teleop').find('quadruped_teleop')
+    quadruped_teleop_pkg = FindPackageShare('quadruped_teleop').find('quadruped_teleop')
 
-    default_joystick_config = os.path.join(quadruped_teleop_pkg_share, 'config', 'dualsense_joystick.yaml')
+    default_joystick_config = os.path.join(quadruped_teleop_pkg, 'config', 'dualsense_joystick.yaml')
     joystick_config = LaunchConfiguration('joystick_config', default=default_joystick_config)
 
-    default_quadruped_limits_config = os.path.join(quadruped_teleop_pkg_share, 'config', 'go1_limits.yaml')
+    default_quadruped_limits_config = os.path.join(quadruped_teleop_pkg, 'config', 'go1_limits.yaml')
     quadruped_limits_config = LaunchConfiguration('quadruped_limits', default=default_quadruped_limits_config)
 
     joy_node = Node(
