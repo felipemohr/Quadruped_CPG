@@ -30,7 +30,6 @@ class GO1_Robot(Robot):
 
         if not os.path.exists(usd_path):
             carb.log_error("Could not find go1 USD file")
-            simulation_app.close()
             sys.exit()
 
         add_reference_to_stage(usd_path=usd_path, prim_path=prim_path)
@@ -50,7 +49,7 @@ class GO1_Robot(Robot):
         self._body_lin_acc = np.zeros(3)
         self._body_ang_vel = np.zeros(3)
 
-        self.createSensors()
+        # self.createSensors()
 
     def createSensors(self):
         self._imu_path = self._prim_path + "/imu_link/imu_sensor"
@@ -124,3 +123,8 @@ class GO1_Robot(Robot):
             if "force" in frame:
                 self._foot_force[foot] = (1 - self._foot_filter_beta) * self._foot_force[foot] + self._foot_filter_beta * frame["force"]
         return self._foot_force
+    
+    def setJointPositions(self, joint_pos):
+        self.set_joint_positions(
+            positions=np.asarray(np.array(joint_pos.reshape([4, 3]).T.flat), dtype=np.float32)
+        )

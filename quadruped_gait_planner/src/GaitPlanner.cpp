@@ -65,12 +65,10 @@ void GaitPlanner::publishIKCallback()
 
   for (int i=0; i<4; i++)
   {
+    _phase_theta(i) < M_PI ? _frequency_omega(i) = 2*M_PI * _gait_parameters["swing_frequency"] : _frequency_omega(i) = 2*M_PI * _gait_parameters["stance_frequency"];
+    _phase_dtheta(i) = _frequency_omega(i);
     for (int j=0; j<4; j++)
-    {
-      _phase_theta(i) < M_PI ? _frequency_omega(i) = 2*M_PI * _gait_parameters["swing_frequency"] : _frequency_omega(i) = 2*M_PI * _gait_parameters["stance_frequency"];
-      _phase_dtheta(i) = _frequency_omega(i);
       _phase_dtheta(i) += _amplitude_r(j) * _coupling_weights(i,j) * sin(_phase_theta(j) - _phase_theta(i) - _coupling_matrix(i,j));
-    }
   }
 
   _amplitude_r += _amplitude_dr * dt;

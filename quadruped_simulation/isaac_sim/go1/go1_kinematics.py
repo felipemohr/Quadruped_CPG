@@ -58,7 +58,7 @@ class GO1_Kinematics():
         A = (a**2 + x**2 + self.leg_dimensions["L2"]**2 - self.leg_dimensions["L3"]**2) / (2*self.leg_dimensions["L2"] * sqrt(a**2 + x**2))
         B = (a**2 + x**2 - self.leg_dimensions["L2"]**2 - self.leg_dimensions["L3"]**2) / (2*self.leg_dimensions["L2"] * self.leg_dimensions["L3"])
 
-        theta1 = atan2(y, -z) - atan2(reflect*self.leg_dimensions["L1"], reflect*a)
+        theta1 = atan2(y, -z) - atan2(reflect*self.leg_dimensions["L1"], a)
         theta2 = pi/2 - atan2(a, x) - atan2(sqrt(1.0 - A**2), A)
         theta3 = atan2(sqrt(1.0 - B**2), B)
 
@@ -83,10 +83,12 @@ class GO1_Kinematics():
         return self.get_leg_joints(foot_point_ik, left)
 
     def compute_quadruped_ik(self, body_translation: np.ndarray, body_rotation: np.ndarray, 
-                             fl_foot_point: np.ndarray, fr_foot_point: np.ndarray, rl_foot_point: np.ndarray, rr_foot_point: np.ndarray,
+                             fl_foot_point=np.zeros(3), fr_foot_point=np.zeros(3), rl_foot_point=np.zeros(3), rr_foot_point=np.zeros(3),
                              use_foot_transform=True):
         fl_joints = self.compute_leg_ik(Legs.FL, fl_foot_point, body_translation, body_rotation, use_foot_transform)
         fr_joints = self.compute_leg_ik(Legs.FR, fr_foot_point, body_translation, body_rotation, use_foot_transform)
-        rr_joints = self.compute_leg_ik(Legs.RR, rr_foot_point, body_translation, body_rotation, use_foot_transform)
         rl_joints = self.compute_leg_ik(Legs.RL, rl_foot_point, body_translation, body_rotation, use_foot_transform)
-        return np.array([fl_joints, fr_joints, rr_joints, rl_joints])
+        rr_joints = self.compute_leg_ik(Legs.RR, rr_foot_point, body_translation, body_rotation, use_foot_transform)
+        return np.array([fl_joints, fr_joints, rl_joints, rr_joints])
+
+    # TODO: Check out of range and NaN values

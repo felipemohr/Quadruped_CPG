@@ -12,6 +12,7 @@ from rclpy.node import Node
 from std_msgs.msg import Float64
 from sensor_msgs.msg import Imu
 
+#TODO: Create update method
 class GO1_Node(Node):
     def __init__(self, go1_robot):
         self._go1 = go1_robot
@@ -53,6 +54,7 @@ class GO1_Node(Node):
 
         self._imu_publisher.publish(self._imu_msg)
 
+    # TODO: Fix contact sensors
     def contactSensorsCallback(self):
         data = self._go1.updateContactSensorsData()
         for foot in self._go1._feet_order:
