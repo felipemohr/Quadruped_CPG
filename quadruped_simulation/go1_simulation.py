@@ -13,13 +13,11 @@ import numpy as np
 if __name__ == "__main__":
     rclpy.init()
 
-    GO1_PRIM_PATH = "/World/Go1"
-
     world = World()
     world.scene.add_default_ground_plane()
 
     go1_robot = go1.GO1_Robot(
-        prim_path=GO1_PRIM_PATH,
+        prim_path="/World",
         position=np.array([0.0, 0.0, 0.5]),
         name="go1",
         usd_path="isaac_sim/go1/go1.usd",

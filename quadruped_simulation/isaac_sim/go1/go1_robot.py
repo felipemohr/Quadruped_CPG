@@ -18,7 +18,7 @@ import os
 class GO1_Robot(Robot):
     def __init__(
         self,
-        prim_path: str,
+        prim_path: str = "/World",
         name: str = "go1",
         usd_path: str = "go1.usd",
         use_camera: bool = True,
@@ -35,13 +35,13 @@ class GO1_Robot(Robot):
         add_reference_to_stage(usd_path=usd_path, prim_path=prim_path)
 
         Robot.__init__(self, 
-                       prim_path=prim_path, 
+                       prim_path=prim_path+"/"+name, 
                        name=name, 
                        position=position, 
                        translation=translation, 
                        orientation=orientation)
 
-        self._prim_path = prim_path
+        self._prim_path = prim_path + "/" + name
         self._physics_dt = physics_dt
         self._use_camera = use_camera
 
@@ -49,7 +49,7 @@ class GO1_Robot(Robot):
         self._body_lin_acc = np.zeros(3)
         self._body_ang_vel = np.zeros(3)
 
-        # self.createSensors()
+        self.createSensors()
 
     def createSensors(self):
         self._imu_path = self._prim_path + "/imu_link/imu_sensor"

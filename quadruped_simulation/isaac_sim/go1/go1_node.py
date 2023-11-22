@@ -6,7 +6,7 @@ from omni.isaac.core.utils.extensions import enable_extension
 
 import omni.graph.core as og
 
-enable_extension("omni.isaac.ros2_bridge-humble")
+enable_extension("omni.isaac.ros2_bridge")
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Float64
