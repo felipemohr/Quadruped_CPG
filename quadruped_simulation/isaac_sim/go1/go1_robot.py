@@ -77,10 +77,9 @@ class GO1_Robot(Robot):
 
         self._sensors.append(self._imu_sensor)
 
-        self._foot_force = dict()
+        self._feet_contact = dict()
         for foot in self._feet_order:
-            self._foot_force[foot] = 0.0
-        self._foot_filter_beta = 0.95
+            self._feet_contact[foot] = True
 
         self._contact_sensors = dict()
         for foot in self._feet_order:
@@ -127,9 +126,8 @@ class GO1_Robot(Robot):
     def updateContactSensorsData(self):
         for foot in self._feet_order:
             frame = self._contact_sensors[foot].get_current_frame()
-            if "force" in frame:
-                self._foot_force[foot] = (1 - self._foot_filter_beta) * self._foot_force[foot] + self._foot_filter_beta * frame["force"]
-        return self._foot_force
+            self._feet_contact[foot] = frame["in_contact"]
+        return self._feet_contact
     
     def sendJointsCommand(self, joint_pos):
         joint_pos = np.asarray(np.array(joint_pos.reshape([4, 3]).T.flat), dtype=np.float32)

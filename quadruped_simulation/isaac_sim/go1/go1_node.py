@@ -7,9 +7,8 @@ from omni.isaac.core.utils.extensions import enable_extension
 import omni.graph.core as og
 
 enable_extension("omni.isaac.ros2_bridge")
-import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float64
+from std_msgs.msg import Bool
 from sensor_msgs.msg import Imu
 
 class GO1_Node(Node):
@@ -30,8 +29,8 @@ class GO1_Node(Node):
         self._foot_publisher = dict()
         self._foot_msg = dict()
         for foot in self._go1._feet_order:
-            self._foot_publisher[foot] = self.create_publisher(Float64, foot+'_force', 10)
-            self._foot_msg[foot] = Float64()
+            self._foot_publisher[foot] = self.create_publisher(Bool, foot+'_contact', 10)
+            self._foot_msg[foot] = Bool()
         self._feet_timer = self.create_timer(0.05, self.contactSensorsCallback)
 
     def update(self):
@@ -60,7 +59,6 @@ class GO1_Node(Node):
 
         self._imu_publisher.publish(self._imu_msg)
 
-    # TODO: Fix contact sensors
     def contactSensorsCallback(self):
         for foot in self._go1._feet_order:
             self._foot_msg[foot].data = self._feet_contact_data[foot]
