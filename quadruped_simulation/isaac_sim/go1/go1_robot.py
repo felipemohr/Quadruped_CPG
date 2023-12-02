@@ -1,57 +1,66 @@
 import omni
 
+from omni.isaac.core.utils.types import ArticulationAction
 from omni.isaac.core.utils.numpy.rotations import euler_angles_to_quats, quats_to_euler_angles
 from omni.isaac.core.utils.stage import add_reference_to_stage
 from omni.isaac.core.robots import Robot
 
 from omni.isaac.sensor import IMUSensor, ContactSensor, Camera
 
-import omni.graph.core as og
-
 from typing import Optional, Sequence
 
 import numpy as np
-import carb
-import sys
-import os
 
 class GO1_Robot(Robot):
     def __init__(
         self,
-        prim_path: str = "/World",
+        usd_path: str,
+        prim_path: str = "/World/Go1",
         name: str = "go1",
-        usd_path: str = "go1.usd",
         use_camera: bool = True,
         physics_dt: Optional[float] = 1 / 400.0,
-        position: Optional[Sequence[float]] = None,
-        translation: Optional[Sequence[float]] = None,
-        orientation: Optional[Sequence[float]] = None,
+        position: Optional[Sequence[float]] = np.array([0.0, 0.0, 0.4], dtype=np.float32),
+        orientation: Optional[Sequence[float]] = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
     ) -> None:
-
-        if not os.path.exists(usd_path):
-            carb.log_error("Could not find go1 USD file")
-            sys.exit()
 
         add_reference_to_stage(usd_path=usd_path, prim_path=prim_path)
 
         Robot.__init__(self, 
-                       prim_path=prim_path+"/"+name, 
+                       prim_path=prim_path, 
                        name=name, 
                        position=position, 
-                       translation=translation, 
                        orientation=orientation)
 
-        self._prim_path = prim_path + "/" + name
+        self._prim_path = prim_path
         self._physics_dt = physics_dt
         self._use_camera = use_camera
+
+        self._init_pos = position
+        self._init_orientation = orientation
 
         self._body_rotation = np.zeros(3)
         self._body_lin_acc = np.zeros(3)
         self._body_ang_vel = np.zeros(3)
 
-        self.createSensors()
+        self._feet_order = ["FL_foot", "FR_foot", "RL_foot", "RR_foot"]
 
-    def createSensors(self):
+        self.initializeSensors()
+
+    def initializeRobot(self, joint_kps=1000.0, joint_kds=20.0):
+        self.set_world_pose(position=self._init_pos, orientation=self._init_orientation)
+        self.set_linear_velocity(np.zeros(3))
+        self.set_angular_velocity(np.zeros(3))
+        self.initializeJoints(joint_kps, joint_kds)
+
+    def initializeJoints(self, kps, kds):
+        joint_pos = np.array([0.0, 0.0, 0.0, 0.0, np.pi/4, np.pi/4, np.pi/4, np.pi/4, -np.pi/2, -np.pi/2, -np.pi/2, -np.pi/2], dtype=np.float32)
+        self.set_joint_positions(positions=joint_pos)
+        self.set_joint_velocities(velocities=np.zeros(12))
+        self.set_joint_efforts(np.zeros(12))
+        self.get_articulation_controller().set_gains(kps=kps, kds=kds)
+
+    def initializeSensors(self):
+        print("initializeSensors")
         self._imu_path = self._prim_path + "/imu_link/imu_sensor"
         
         self._imu_rotation_std = 0.01
@@ -67,8 +76,6 @@ class GO1_Robot(Robot):
         )
 
         self._sensors.append(self._imu_sensor)
-
-        self._feet_order = ["FL_foot", "FR_foot", "RL_foot", "RR_foot"]
 
         self._foot_force = dict()
         for foot in self._feet_order:
@@ -124,7 +131,6 @@ class GO1_Robot(Robot):
                 self._foot_force[foot] = (1 - self._foot_filter_beta) * self._foot_force[foot] + self._foot_filter_beta * frame["force"]
         return self._foot_force
     
-    def setJointPositions(self, joint_pos):
-        self.set_joint_positions(
-            positions=np.asarray(np.array(joint_pos.reshape([4, 3]).T.flat), dtype=np.float32)
-        )
+    def sendJointsCommand(self, joint_pos):
+        joint_pos = np.asarray(np.array(joint_pos.reshape([4, 3]).T.flat), dtype=np.float32)
+        self.get_articulation_controller().apply_action(ArticulationAction(joint_positions=joint_pos))
