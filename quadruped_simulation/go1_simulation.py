@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     while simulation_app.is_running():
         world.step(render=True)
-        og.Controller.set(og.Controller.attribute("/Go1_Joints/OnImpulseEvent.state:enableImpulse"), True)
+        go1_node.update()
         rclpy.spin_once(go1_node)
 
     simulation_app.close()
