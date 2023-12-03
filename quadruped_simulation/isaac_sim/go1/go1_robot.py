@@ -19,7 +19,7 @@ class GO1_Robot(Robot):
         name: str = "go1",
         use_camera: bool = True,
         physics_dt: Optional[float] = 1 / 400.0,
-        position: Optional[Sequence[float]] = np.array([0.0, 0.0, 0.4], dtype=np.float32),
+        position: Optional[Sequence[float]] = np.array([0.0, 0.0, 0.5], dtype=np.float32),
         orientation: Optional[Sequence[float]] = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32),
     ) -> None:
 
@@ -60,7 +60,6 @@ class GO1_Robot(Robot):
         self.get_articulation_controller().set_gains(kps=kps, kds=kds)
 
     def initializeSensors(self):
-        print("initializeSensors")
         self._imu_path = self._prim_path + "/imu_link/imu_sensor"
         
         self._imu_rotation_std = 0.01

@@ -24,21 +24,19 @@ class GO1_Node(Node):
 
         self._imu_publisher = self.create_publisher(Imu, 'imu', 10)
         self._imu_msg = Imu()
-        self._imu_timer = self.create_timer(0.02, self.imuCallback)
 
         self._foot_publisher = dict()
         self._foot_msg = dict()
         for foot in self._go1._feet_order:
             self._foot_publisher[foot] = self.create_publisher(Bool, foot+'_contact', 10)
             self._foot_msg[foot] = Bool()
-        self._feet_timer = self.create_timer(0.05, self.contactSensorsCallback)
 
     def update(self):
         self._imu_data = self._go1.updateImuData()
         self._feet_contact_data = self._go1.updateContactSensorsData()
         og.Controller.set(og.Controller.attribute("/Go1_Joints/OnImpulseEvent.state:enableImpulse"), True)
   
-    def imuCallback(self):
+    def publishImu(self):
         quat = euler_angles_to_quats(self._imu_data["rotation"])
 
         self._imu_msg.header.stamp = self.get_clock().now().to_msg()
@@ -59,7 +57,7 @@ class GO1_Node(Node):
 
         self._imu_publisher.publish(self._imu_msg)
 
-    def contactSensorsCallback(self):
+    def publishContactSensors(self):
         for foot in self._go1._feet_order:
             self._foot_msg[foot].data = self._feet_contact_data[foot]
             self._foot_publisher[foot].publish(self._foot_msg[foot])
