@@ -44,7 +44,7 @@ if __name__ == "__main__":
     go1_robot.initializeRobot()
     go1_node = go1.GO1_Node(go1_robot)
 
-    world.add_physics_callback("callback", callback_fn=on_physics_step)
+    world.add_physics_callback("physics_callback", callback_fn=on_physics_step)
 
     while simulation_app.is_running():
         world.step(render=True)
