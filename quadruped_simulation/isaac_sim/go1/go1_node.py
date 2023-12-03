@@ -6,15 +6,17 @@ from omni.isaac.core.utils.extensions import enable_extension
 
 import omni.graph.core as og
 
-enable_extension("omni.isaac.ros2_bridge-humble")
-import rclpy
+enable_extension("omni.isaac.ros2_bridge")
 from rclpy.node import Node
-from std_msgs.msg import Float64
+from std_msgs.msg import Bool
 from sensor_msgs.msg import Imu
 
 class GO1_Node(Node):
     def __init__(self, go1_robot):
         self._go1 = go1_robot
+
+        self._imu_data = self._go1.updateImuData()
+        self._feet_contact_data = self._go1.updateContactSensorsData()
 
         self.createROS2Graphs()
 
@@ -22,18 +24,20 @@ class GO1_Node(Node):
 
         self._imu_publisher = self.create_publisher(Imu, 'imu', 10)
         self._imu_msg = Imu()
-        self._imu_timer = self.create_timer(0.02, self.imuCallback)
 
         self._foot_publisher = dict()
         self._foot_msg = dict()
         for foot in self._go1._feet_order:
-            self._foot_publisher[foot] = self.create_publisher(Float64, foot+'_force', 10)
-            self._foot_msg[foot] = Float64()
-        self._feet_timer = self.create_timer(0.05, self.contactSensorsCallback)
-        
-    def imuCallback(self):
-        data = self._go1.updateImuData()
-        quat = euler_angles_to_quats(data["rotation"])
+            self._foot_publisher[foot] = self.create_publisher(Bool, foot+'_contact', 10)
+            self._foot_msg[foot] = Bool()
+
+    def update(self):
+        self._imu_data = self._go1.updateImuData()
+        self._feet_contact_data = self._go1.updateContactSensorsData()
+        og.Controller.set(og.Controller.attribute("/Go1_Joints/OnImpulseEvent.state:enableImpulse"), True)
+  
+    def publishImu(self):
+        quat = euler_angles_to_quats(self._imu_data["rotation"])
 
         self._imu_msg.header.stamp = self.get_clock().now().to_msg()
         self._imu_msg.header.frame_id = "imu_link"
@@ -41,22 +45,21 @@ class GO1_Node(Node):
         self._imu_msg.orientation.x = quat[1]
         self._imu_msg.orientation.y = quat[2]
         self._imu_msg.orientation.z = quat[3]
-        self._imu_msg.linear_acceleration.x = data["lin_acc"][0]
-        self._imu_msg.linear_acceleration.y = data["lin_acc"][1]
-        self._imu_msg.linear_acceleration.z = data["lin_acc"][2]
-        self._imu_msg.angular_velocity.x = data["ang_vel"][0]
-        self._imu_msg.angular_velocity.y = data["ang_vel"][1]
-        self._imu_msg.angular_velocity.z = data["ang_vel"][2]
-        self._imu_msg.orientation_covariance = data["rotation_cov"].flatten()
-        self._imu_msg.linear_acceleration_covariance = data["lin_acc_cov"].flatten()
-        self._imu_msg.angular_velocity_covariance = data["ang_vel_cov"].flatten()
+        self._imu_msg.linear_acceleration.x = self._imu_data["lin_acc"][0]
+        self._imu_msg.linear_acceleration.y = self._imu_data["lin_acc"][1]
+        self._imu_msg.linear_acceleration.z = self._imu_data["lin_acc"][2]
+        self._imu_msg.angular_velocity.x = self._imu_data["ang_vel"][0]
+        self._imu_msg.angular_velocity.y = self._imu_data["ang_vel"][1]
+        self._imu_msg.angular_velocity.z = self._imu_data["ang_vel"][2]
+        self._imu_msg.orientation_covariance = self._imu_data["rotation_cov"].flatten()
+        self._imu_msg.linear_acceleration_covariance = self._imu_data["lin_acc_cov"].flatten()
+        self._imu_msg.angular_velocity_covariance = self._imu_data["ang_vel_cov"].flatten()
 
         self._imu_publisher.publish(self._imu_msg)
 
-    def contactSensorsCallback(self):
-        data = self._go1.updateContactSensorsData()
+    def publishContactSensors(self):
         for foot in self._go1._feet_order:
-            self._foot_msg[foot].data = data[foot]
+            self._foot_msg[foot].data = self._feet_contact_data[foot]
             self._foot_publisher[foot].publish(self._foot_msg[foot])
 
     def createROS2Graphs(self):
