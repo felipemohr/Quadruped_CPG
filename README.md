@@ -1,2 +1,2 @@
-# Quadruped_DRL
-Quadruped Deep Reinforcement Learning packages for ROS 2
+# Quadruped_CPG
+Quadruped Central Pattern Generator packages for ROS 2
